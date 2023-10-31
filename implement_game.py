@@ -51,17 +51,16 @@ if __name__ == '__main__':
     RATE = 0.1
     SCALE = 0.25
     NUM_EPISODES = 2
-
+    
+    #### 1. Load biopsy env ####
     biopsy_env = TemplateGuidedBiopsy(Data_sampler,results_dir = 'game', reward_fn = 'reward', \
-        max_num_steps = 20, deform = True, deform_rate = RATE, deform_scale = SCALE)
+        max_num_steps = 20, deform = True, deform_rate = RATE, deform_scale = SCALE, start_centre= True)
     
-    # Load trained agents : for now, a random policy 
+    ### 2. Load RL model for inference :for now, a random policy     ####
     policy_kwargs = dict(features_extractor_class = NewFeatureExtractor, features_extractor_kwargs=dict(multiple_frames = True, num_channels = 5))
-    agent = PPO(CnnPolicy, env = biopsy_env, policy_kwargs = policy_kwargs)# , tensorboard_log = LOG_DIR, device = torch.device('cpu'))
-                #, policy_kwargs = policy_kwargs, gamma = GAMMA, vf_coef = VALUE_COEFF, \
-                #n_steps = num_interactions, gae_lambda = GAE_LAMBDA, batch_size = BATCH_SIZE,\
-                #n_epochs = 2, learning_rate = LEARNING_RATE, ent_coef = ENTROPY_COEFF, device = device_cuda, tensorboard_log = LOG_DIR)
+    agent = PPO(CnnPolicy, env = biopsy_env, policy_kwargs = policy_kwargs)
     
+    ### 3. User interface     ####
     for i in range(NUM_EPISODES):
         
         obs = biopsy_env.reset()
@@ -69,7 +68,7 @@ if __name__ == '__main__':
         done = False 
         num_steps = 0 
         
-        while ((num_steps <= 3)):
+        while ((num_steps <= 4)):
             # Obtain lesion and mri vols from data 
             lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
             
@@ -85,20 +84,12 @@ if __name__ == '__main__':
             actions,_ = agent.predict(obs)
             #TODO : convert this to action / grid pos for agents!!! 
             
-            # # Define masks for visualisation 
-            # prostate = np.ma.array(prostate_vol, mask=(prostate_vol==0.0))
-            # lesion = np.ma.array(lesion_vol, mask=(lesion_vol==0.0))
-            # needle = np.ma.array(grid, mask = (grid == 0.0))
-            
-            # plt.imshow(mri_vol[30:-30,30:-30,SLICE_NUM], cmap ='gray')
-            # plt.imshow(prostate[30:-30,30:-30,SLICE_NUM],cmap='coolwarm_r', alpha=0.5)
-            # plt.imshow(np.max(lesion[30:-30,30:-30,:], axis =2),cmap='summer', alpha=0.5)
-            # plt.imshow(10*needle[30:-30,30:-30], cmap='jet', alpha = 0.5)
-            # plt.axis('off')
-            
             plt.figure()
             mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
             mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
+            mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
+            mask_n_1= np.ma.array(obs[-2,:,:,:].numpy(), mask=(obs[-2,:,:,:].numpy()==0.0))
+            mask_n_2= np.ma.array(obs[-3,:,:,:].numpy(), mask=(obs[-3,:,:,:].numpy()==0.0))
             mri_ds = mri_vol[::2,::2,::4]
             needle = np.ma.array(grid, mask = (grid == 0.0))
             needle_ds = needle[::2,::2]
@@ -107,15 +98,21 @@ if __name__ == '__main__':
             
             # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
             plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
-            plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
-            plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.5)
             plt.imshow(50*needle_ds[:,:], cmap='jet', alpha = 0.5)
+            plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
+            plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+            plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+            plt.imshow(50*needle_ds[:,:], cmap='jet', alpha = 0.3)
+            plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
+            plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+            plt.axis('off')
+            ### 4. Take in user actions to implement strategy ###
             grid_pos = plt.ginput(0,0)     
             grid_pos = np.array(grid_pos[0])
             grid_pos -= (prostate_centroid/2)[0:-1]
             
             # Swap x and y 
-            grid_pos[0], grid_pos[1] = grid_pos[1], grid_pos[0]
+            #grid_pos[0], grid_pos[1] = grid_pos[1], grid_pos[0]
             
             # Take input action (ie clicked position - original position), then scale
             if num_steps == 0:
@@ -133,60 +130,10 @@ if __name__ == '__main__':
             print(f"Current pos : {current_pos}Agent suggested actions : {actions} our actions : {taken_actions} \n Done :{done} num_steps {num_steps}")
             num_steps += 1
             
+            # BUG: observaiton of needle not alligned with actions!!! 
     print('chicken')
-        
-
-        
-
-    # Basic game set up 
-    # for idx, (mri_vol, prostate_mask, tumour_mask, tumour_mask_sitk, rectum_pos, patient_name) in enumerate(PS_dataset):
-    
-    #     print(f"patient_name {patient_name}")
-
-    #     # Compute prostate centroid 
-    #     prostate_centroid = np.mean(np.where(prostate_mask), axis = 1)
-    #     grid, grid_coords = generate_grid(prostate_centroid)
-        
-    #     ## save each individual lesion as separate .nii.gz file for sampling!!!
-    #     lesion_labeller = LabelLesions()
-    #     tumour_centroids, num_lesions, tumour_statistics, multiple_label_img = lesion_labeller((tumour_mask_sitk,))
-        
-    #     # Sample single lesion 
-    #     lesion_idx = 1
-    #     lesion_vol = 1.0*(multiple_label_img==lesion_idx)
-        
-    #     # lesion volume : 
-    #     prostate_2d = np.max(prostate_mask, axis = 2)
-    #     mask = np.ma.array(prostate_mask, mask=(prostate_mask==0.0))
-    #     lesion = np.ma.array(lesion_vol, mask=(lesion_vol==0.0))
-    #     needle = np.ma.array(grid, mask = (grid == 0.0))
-        
-    #     plt.figure()
-    #     slice_num = 42
-    #     plt.imshow(mri_vol[:,:,slice_num], cmap ='gray')
-    #     plt.imshow(mask[:,:,slice_num],cmap='coolwarm_r', alpha=0.5)
-    #     plt.imshow(lesion[:,:,slice_num],cmap='summer', alpha=0.5)
-    #     plt.imshow(needle*10, cmap='jet', alpha = 0.5)
-    #     plt.axis('off')
-    #     grid_pos = plt.ginput(0,0)
-        
-    #     # ginput takes in image cordinates (x,y) clicked on during game 
-          
-    #     # TODO: Implement "needle grid positions on volume"
-    #     print('chicken')
-
-    
-    #### PSEUDO CODE GAME 
-    # 1. Load game env 
-    
-    
-    # 2. Load RL model for inference
-    
      
-    # 3. Load user interface 
     
-     
-    # 4. Take in user actions to implement strategy 
     
     
     
