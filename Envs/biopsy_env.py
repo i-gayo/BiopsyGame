@@ -37,7 +37,7 @@ def round_to_05(val):
     if torch.is_tensor(val):
       rounded_05 = 5 * torch.round(val / 5)
     else:
-      rounded_05 = 5 * round(val / 5)
+      rounded_05 = 5 * np.round(val / 5)
     return rounded_05
 
 def online_compute_coef(x_n1, y_n1, xbar = 0, ybar = 0, Nn = 0, Dn=0, En=0, n=0):
@@ -110,7 +110,7 @@ class TemplateGuidedBiopsy(gym.Env):
         
         # starting condition on grid (within centre of template grid)
         img_data = self.sample_new_data()
-
+        self.img_data = img_data 
         # Defining variables 
         self.done = False 
         self.reward_fn = reward_fn
@@ -699,7 +699,7 @@ class TemplateGuidedBiopsy(gym.Env):
 
         lesion_idx = self.lesion_counter #Use number of lesions 
         self.lesion_idx = lesion_idx - 1 
-        lesion_mask = self.separate_masks(self.multiple_label_img, lesion_idx)
+        lesion_mask = 1.0*(self.multiple_label_img==lesion_idx)
         
         print(f"Lesion centre : {self.tumour_centroids[self.lesion_idx] + self.prostate_centroid}")
         
@@ -707,6 +707,7 @@ class TemplateGuidedBiopsy(gym.Env):
         # previous : self.add_reg_noise(img_data['tumour_mask]) which has all of hte masks, instead of single 
 
         self.true_tumour_vol = lesion_mask 
+        
         if self.tre == 0.0:
           self.noisy_tumour_vol, tre_tumour = self.add_reg_noise(lesion_mask, tre_ = self.tre) #no tre at all, just lesion vol 
         else: 
@@ -743,7 +744,7 @@ class TemplateGuidedBiopsy(gym.Env):
         obs_volume = torch.stack((torch.tensor(self.noisy_tumour_vol), torch.tensor(self.noisy_prostate_vol))).unsqueeze(0)
         
         if self.deform: 
-          obs_volume = self.apply_deforms(obs_volume.to(torch.device("cuda")), self.deform_rate, self.deform_scale)
+          obs_volume = self.apply_deforms(obs_volume.to(self.device), self.deform_rate, self.deform_scale)
           obs_volume.to(torch.device("cpu"))
         
         #obs = self.obtain_obs_wneedle(grid_array, np.zeros_like(self.img_data['mri_vol']))
@@ -1530,6 +1531,15 @@ class TemplateGuidedBiopsy(gym.Env):
       
       return deformed_vol
     
+    def get_img_data(self):
+        return self.img_data 
+    
+    def get_lesion_mask(self):
+        return self.true_tumour_vol
+    
+    def get_current_pos(self):
+        return self.current_needle_pos
+    
 if __name__ == '__main__':
 
     #Evaluating agent on training and testing data 
@@ -1547,15 +1557,13 @@ if __name__ == '__main__':
     PS_dataset_train = Image_dataloader(ps_path, csv_path, use_all = False, mode  = 'train')
     Data_sampler_train = DataSampler(PS_dataset_train)
 
-    Biopsy_env_init = TemplateGuidedBiopsy_single(Data_sampler_train, results_dir = log_dir, max_num_steps = 20, reward_fn = 'patient', obs_space = 'both', start_centre = False) #Data_sampler_train,
+    Biopsy_env_init = TemplateGuidedBiopsy(Data_sampler_train, results_dir = log_dir, max_num_steps = 20, reward_fn = 'patient', obs_space = 'both', start_centre = False) #Data_sampler_train,
     
     test_obs = Biopsy_env_init.reset()
     new_obs = Biopsy_env_init.step([-1.5,1,1])
 
     # Initiate random policy 
 
-
-    print('chicken')
 
     def evaluate(model, num_episodes=100, deterministic=True):
       """
