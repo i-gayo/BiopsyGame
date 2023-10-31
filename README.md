@@ -7,6 +7,8 @@ An interactive user game that simulates a prostate biopsy procedure
   <img src="Figures/4_grid.png" alt="Image 2" style="width: 40%;">
 </div>
 
+Examples of the game screen can be visualised here. Grid points are shown in blue, whilst lesions and prostate gland masks are displayed in green and red respectively. Previously visited grid positions can also be seen, for up to two timesteps behind, and displayed as yellow box points. 
+
 ## Game instructions
 Users are shown images of the MR volume, prostate and lesion masks, along with a brachytherapy grid. 
 
