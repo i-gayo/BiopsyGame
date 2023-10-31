@@ -1,6 +1,5 @@
 import torch
 
-
 class SpatialTransform:
     """
     A class for spatial transformation for 3D image volume (batch,c,z,y,x)
@@ -20,7 +19,7 @@ class SpatialTransform:
                     torch.linspace(-1, 1, self.volsize[2]),
                     torch.linspace(-1, 1, self.volsize[1]),
                     torch.linspace(-1, 1, self.volsize[0]),
-                    indexing="ij",
+                    #indexing="ij",
                 ),
                 dim=3,
             )[None, ...]
@@ -66,7 +65,7 @@ class GridTransform(SpatialTransform):
                     torch.linspace(-1, 1, self.grid_size[2]),
                     torch.linspace(-1, 1, self.grid_size[1]),
                     torch.linspace(-1, 1, self.grid_size[0]),
-                    indexing="ij",
+                    #indexing="ij",
                 ),
                 dim=3,
             )[None, ...]

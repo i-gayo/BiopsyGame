@@ -359,7 +359,7 @@ class Image_dataloader(Dataset):
         self.num_lesions = df_dataset[' num_lesions'].tolist()
         
         # Write to new csv file 
-        df_dataset.to_csv('/raid/candi/Iani/Biopsy_RL/Updated_patients.csv')
+        df_dataset.to_csv(csv_file)
         
 
         # Train with all patients 
@@ -552,6 +552,91 @@ class Image_dataloader_single(Dataset):
         sitk_img_path = os.path.join(self.lesion_folder, patient_name)
 
         return mri_vol, prostate_mask, lesion_mask, sitk_img_path , rectum_pos, patient_name
+
+
+class NewFeatureExtractor(BaseFeaturesExtractor):
+    """
+    :param observation_space: (gym.Space)
+    :param features_dim: (int) Number of features extracted.
+        Correspods to the number of unit for the last layer.
+    """
+
+    def __init__(self, observation_space: gym.spaces.Box, features_dim: int = 512, multiple_frames = False, num_channels = 5):
+        
+        super(NewFeatureExtractor, self).__init__(observation_space, features_dim)
+        # Assumes CxHxW images (channels first)
+        # Re-ordering will be done by pre-preprocessing or wrapper
+
+        #num_input_channels = observation_space.shape[-1] #rows x cols x channels 
+        #num_multiple_frames = 3
+        #num_multiple_frames = observation_space.shape[-1]
+        #self.num_multiple_frames = num_multiple_frames
+
+        num_channels = num_channels
+        self.cnn_layers = nn.Sequential(
+
+            # First layer like resnet, stride = 2
+            nn.Conv3d(num_channels, 32, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm3d(32),
+            nn.ReLU(),
+
+            # Apply pooling layer in between 
+            nn.MaxPool3d(kernel_size = 3, stride = 2, padding = 1),
+
+            nn.Conv3d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm3d(64),
+            nn.ReLU(),
+
+            # Apply pooling layer in between 
+            nn.MaxPool3d(kernel_size = 3, stride = 2, padding = 1),
+
+            nn.Conv3d(64, 128, kernel_size=3, stride=1),
+            nn.BatchNorm3d(128),
+            nn.ReLU()
+        )
+
+        #Flatten layers 
+        self.flatten = nn.Flatten()
+
+        # Compute shape by doing one forward pass
+        with torch.no_grad():
+            all_layers = nn.Sequential(self.cnn_layers, self.flatten)
+            
+            #observation_space_shuffled = np.transpose(observation_space.sample(), [2, 1, 0])
+            #n_flatten = all_layers(torch.as_tensor(observation_space_shuffled[None]).float()).shape[1]
+            #processed_obs_space = self._pre_process_image(torch.zeros))).float()
+            processed_obs_space = torch.zeros([1, 5, 100, 100, 24])
+            n_flatten = all_layers(processed_obs_space).shape[1]  
+
+        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+
+    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        
+        #observations = self._pre_process_image(observations)
+        observations = observations.float() 
+        output = self.cnn_layers(observations)
+        output = self.flatten(output)
+        
+        return self.linear(output)
+
+    def _pre_process_image(self, images):
+        """ 
+        A function that switches the dimension of image from row x col x channel -> channel x row x colmn 
+        and addeds a dimension along 0th axis to fit network 
+        """ 
+        #print(f'Image size {images.size()}')
+        image = images.clone().detach().to(torch.uint8)#.squeeze()
+        if len(np.shape(images)) == 5:
+            image = image.squeeze()
+        split_channel_image = torch.cat([torch.cat([image[j,:,:,i*25:(i*25)+25].unsqueeze(0) for i in range(3)]).unsqueeze(0) for j in range(image.size()[0])])#.clone().detach().to(torch.uint8)
+        #split_channel_image = torch.cat([torch.cat(torch.tensor_split(image[i,:,:,:].unsqueeze(0), self.num_multiple_frames, dim=3)).unsqueeze(0) for i in range(image.size()[0])])
+        #processed_image = image.permute(0, 3,2,1)
+        #processed_image = torch.unsqueeze(processed_image, dim= 0)
+        
+        # Turn image from channel x row x column -> channel x row x column x depth for pre-processing with 3D layers 
+
+        return split_channel_image
+
 
 class FeatureExtractor(BaseFeaturesExtractor):
     """
