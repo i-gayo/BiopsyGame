@@ -13,7 +13,7 @@ Users are shown images of the MR volume, prostate and lesion masks, along with a
 To select a grid position, simply click on a desired grid point, then close the image. A new image will pop up with an updated screen : a yellow dot signifies the previously visited grid positions. 
 The user repeats the same process until all 5 biopsy needles have been fired.
 
+## Comparison with RL predictions 
 
-## Comparison with RL predictions 
 The user can also choose to fire grid positions suggested by trained RL agents.
 TODO: Display RL suggestions in "info bar" on game screen
