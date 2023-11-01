@@ -540,11 +540,14 @@ class TemplateGuidedBiopsy(gym.Env):
       y_idx = current_pos[1]#*5
 
       #Converts range from (-30,30) to image grid array
-      x_idx = (x_idx) + 50
-      y_idx = (y_idx) + 50
+      # before : add +50 to each x and y position
+      
+      x_idx = (x_idx) + round(self.prostate_centroid[0]/2)
+      y_idx = (y_idx) + round(self.prostate_centroid[1]/2)
 
-      x_grid_pos = int(x_idx)
-      y_grid_pos = int(y_idx)
+      x_grid_pos = round(x_idx)
+      y_grid_pos = round(y_idx)
+      #print(f"ENV x and y:  {x_grid_pos} and {y_grid_pos}")
 
       depth_map = {0 : 1, 1 : int(0.5*self.max_depth), 2 : self.max_depth}
       depth = depth_map[int(current_pos[2])]
@@ -653,6 +656,7 @@ class TemplateGuidedBiopsy(gym.Env):
 
         #Obtain bounding box of prostate, tumour masks (for tumour this is a bounding sphere) 
         self.bb_prostate_mask, self.prostate_centroid = self._extract_volume_params(prostate_mask, which_case= 'Prostate')
+        print(f"Prostate centroid : {self.prostate_centroid}")
         self.max_needle_depth = np.max(np.where(self.img_data['prostate_mask'] == 1)[-1]) #max z depth with prostate present using whole volume 
         self.max_depth = int(self.max_needle_depth /4) # downsamples image volume so / 4 
         #self.max_depth = np.max(np.where(self.img_data['prostate_mask'][::2,::2,::4] == 1)[-1]) #max z depth with prostate present
@@ -933,9 +937,11 @@ class TemplateGuidedBiopsy(gym.Env):
       x_movement = round_to_05(action_x * max_step_size)
       y_movement = round_to_05(action_y * max_step_size)
 
+
       updated_x = self.current_needle_pos[0] + x_movement
       updated_y = self.current_needle_pos[1] + y_movement
 
+      print(f"Current grid pos : {self.current_needle_pos} new pos : ({updated_x},{updated_y})")
       #Dealing with boundary positions 
       x_lower = updated_x < -30
       x_higher = updated_x > 30
