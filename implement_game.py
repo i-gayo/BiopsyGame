@@ -84,7 +84,7 @@ if __name__ == '__main__':
             actions,_ = agent.predict(obs)
             #TODO : convert this to action / grid pos for agents!!! 
             
-            plt.figure()
+            fig, axs = plt.subplots(1)
             mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
             mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
             mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
@@ -105,7 +105,20 @@ if __name__ == '__main__':
             plt.imshow(50*needle_ds[:,:], cmap='jet', alpha = 0.3)
             plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
             plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+            
+            # ADDING labels to grid positions!!!
+            first_x = np.min(np.where(grid == 1)[1])/2
+            first_y = np.min(np.where(grid == 1)[0])/2
+            last_x = np.max(np.where(grid == 1)[1])/2
+            s = 'A  a  B  b  C  c  D  d  E  e  F  f  G'
+            plt.text(first_x, first_y - 5, s, fontsize = 10.5, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
+            grid_labels = np.arange(7, 0.5, -0.5)
+            for idx, label in enumerate(grid_labels):
+                plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
+                plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
+                
             plt.axis('off')
+            
             ### 4. Take in user actions to implement strategy ###
             grid_pos = plt.ginput(0,0)     
             grid_pos = np.array(grid_pos[0])
