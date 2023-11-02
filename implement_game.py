@@ -158,16 +158,41 @@ if __name__ == '__main__':
             first_x = np.min(np.where(grid == 1)[1])
             first_y = np.min(np.where(grid == 1)[0])
             last_x = np.max(np.where(grid == 1)[1])
+            last_y = np.max(np.where(grid == 1)[0])
             s = 'A  a  B  b  C  c  D  d  E  e  F  f  G' # fontsize 10.5 
             #s = '-30 -25 -20 -15 -10 -5 0 5 10 15 20 25 30' #font size 8
-            plt.text(first_x, first_y - 5, s, fontsize = 8, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
+            plt.text(first_x, first_y - 5, s, fontsize = 10.5, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
             grid_labels = np.arange(7, 0.5, -0.5)
-            grid_labels = np.arange(-30, 35, 5)
+            #grid_labels = np.arange(-30, 35, 5)
             for idx, label in enumerate(grid_labels):
                 plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
                 plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
                 
             plt.axis('off')
+            
+            # Take input action (ie clicked position - original position), then scale
+            if num_steps == 0:
+                current_pos = np.array([0,0])
+            else:
+                current_pos = biopsy_env.get_current_pos()
+            
+            ### print suggested actions  
+            # Convert agent actions -> positions to choose 
+            suggested_pos = round_to_05((actions[0:-1] * 10) + current_pos)
+            #my_pos = round_to_05((taken_actions[0:-1]*10) + current_pos)
+            
+            # Convert predicted actions to grid pos (A, E)
+            x_dict = ['A', 'a', 'B', 'b', 'C', 'c', 'D', 'd', 'E', 'e', 'F', 'f', 'G']
+            grid_vals = np.arange(-30,35, 5)
+            x_idx = x_dict[(np.where(grid_vals == suggested_pos[0]))[0][0]]
+            
+            y_dict = [str(num) for num in np.arange(7, 0.5, -0.5)]
+            y_idx = y_dict[(np.where(grid_vals == suggested_pos[1]))[0][0]]
+            
+            suggested_str = 'Suggested GRID POSITION: [' + x_idx + ',' + y_idx + ']'
+            plt.text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
+            
+            
             
             ### 4. Take in user actions to implement strategy ###
             grid_pos = plt.ginput(1,0) #0,0)     
@@ -179,11 +204,6 @@ if __name__ == '__main__':
             # Swap x and y 
             #grid_pos[0], grid_pos[1] = grid_pos[1], grid_pos[0]
             
-            # Take input action (ie clicked position - original position), then scale
-            if num_steps == 0:
-                current_pos = np.array([0,0])
-            else:
-                current_pos = biopsy_env.get_current_pos()
             
             #grid_pos = np.swapaxes(grid_pos, 1, 0)
 
@@ -196,6 +216,7 @@ if __name__ == '__main__':
             
             # Take step in environment 
             obs, reward, done, info = biopsy_env.step(taken_actions)
+            
             print(f"Current pos : {current_pos}Agent suggested actions : {actions} our actions : {taken_actions} \n Done :{done} num_steps {num_steps}")
             num_steps += 1
             
