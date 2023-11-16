@@ -7,5 +7,3 @@ dependencies:
   - pip 
   - pytorch
   - tensorboard
-  - simpleitk
-  - nibabel

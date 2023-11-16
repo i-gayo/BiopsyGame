@@ -31,4 +31,4 @@ if __name__ == '__main__':
     print(num_episodes)
 
     #print(f"Loading game script. Running for {args.NUM_EPISODES} episodes")
-    run_game(NUM_EPISODES = int(args.NUM_EPISODES), log_dir = args.log_dir)
+    run_game(NUM_EPISODES = num_episodes, log_dir = log_dir)
