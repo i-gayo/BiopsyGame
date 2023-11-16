@@ -8,7 +8,6 @@ from scipy.interpolate import interpn
 import copy
 import os 
 from stable_baselines3 import PPO
-from supersuit import frame_stack_v1
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvWrapper
 from stable_baselines3.ppo.policies import CnnPolicy#, MultiInputPolicy
