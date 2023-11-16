@@ -23,6 +23,7 @@ from stable_baselines3.common import results_plotter
 from stable_baselines3.common.logger import Figure
 import numpy as np 
 import os
+
 #from Prostate_dataloader import * 
 
 #### Functions for cerating grid coords 
@@ -351,12 +352,12 @@ class Image_dataloader(Dataset):
         #df_dataset = pd.read_csv('/Users/ianijirahmae/Documents/PhD_project/MRes_project/Reinforcement Learning/patient_data_multiple_lesions.csv')
             # Find which patient indeces have more than 6 lesions 
         df_dataset = pd.read_csv(csv_file)
-        patients_w5 = np.where(df_dataset[' num_lesions'] >= 5)[0] # save these indices for next time!!!
+        patients_w5 = np.where(df_dataset['num_lesions'] >= 5)[0] # save these indices for next time!!!
     
         # Remove patients where lesions >5 as these are incorrectly labelled!!
         df_dataset = df_dataset.drop(df_dataset.index[patients_w5])
         self.all_file_names = df_dataset['patient_name'].tolist()
-        self.num_lesions = df_dataset[' num_lesions'].tolist()
+        self.num_lesions = df_dataset['num_lesions'].tolist()
         
         # Write to new csv file 
         df_dataset.to_csv(csv_file)
