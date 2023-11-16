@@ -1,0 +1,11 @@
+name: biopsy_rl
+dependencies:
+  - numpy
+  - pandas
+  - h5py
+  - matplotlib
+  - pip 
+  - pytorch
+  - tensorboard
+  - simpleitk
+  - nibabel
