@@ -1,4 +1,4 @@
-name: biopsy_rl
+name: biopsy_game
 dependencies:
   - numpy
   - pandas
