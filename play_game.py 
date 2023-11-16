@@ -1,6 +1,0 @@
-import os 
-import argparse
-from implement_game import run_game
-
-if __name__ == '__main__':
-    print('chicken)
