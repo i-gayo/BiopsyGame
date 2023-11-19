@@ -68,8 +68,8 @@ def generate_grid_old(prostate_centroid):
 
 def run_game(NUM_EPISODES=5, log_dir = 'game'):
     
-    data_path = './Data/ProstateDataset'
-    csv_path = './Data/patient_data_multiple_lesions.csv'
+    data_path = '.\Data\ProstateDataset'
+    csv_path = '.\Data\ProstateDataset\patient_data_multiple_lesions.csv'
     log_dir = log_dir
     os.makedirs(log_dir, exist_ok=True)
     
