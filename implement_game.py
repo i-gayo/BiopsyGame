@@ -78,6 +78,9 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
     Data_sampler = DataSampler(PS_dataset)
     biopsy_env = TemplateGuidedBiopsy(Data_sampler,results_dir = log_dir, reward_fn = 'reward', \
         max_num_steps = 20, deform = True, start_centre= True)
+    data=biopsy_env.get_info()
+    reward=0
+    total_reward=0
     
     # Load agent
     policy_kwargs = dict(features_extractor_class = NewFeatureExtractor, features_extractor_kwargs=dict(multiple_frames = True, num_channels = 5))
@@ -145,6 +148,14 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
             for idx, label in enumerate(grid_labels):
                 plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
                 plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
+            
+            plt.text(first_x - 15,last_y+16, ('Total Result:{} ') ,fontsize = 12.5, color = 'yellow')
+            plt.text((last_x*0.6), last_y+16, f'Current Result: {reward} ',fontsize = 12.5, color = 'greenyellow')
+            plt.text(first_x-15,first_y-15,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
+            
+            # plt.text(first_x - 15,last_y+16, ('Total Result: ') ,fontsize = 12.5, color = 'yellow')
+            # plt.text((last_x*0.6), last_y+16, f'Current Result:  ',fontsize = 12.5, color = 'greenyellow')
+            # plt.text(first_x-15,first_y-15,f"CCL:",fontsize= 10.5,color = 'salmon')
                 
             plt.axis('off')
             
@@ -186,13 +197,13 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
             taken_actions = np.append(taken_actions, ([1]))                                                                                         
             
             # Take step in environment 
-            obs, reward, done, info = biopsy_env.step(taken_actions)
+            obs, reward, done, data = biopsy_env.step(taken_actions)
             
             #print(f"Current pos : {current_pos}Agent suggested actions : {actions} our actions : {taken_actions} \n Done :{done} num_steps {num_steps}")
             num_steps += 1
     
             plt.close()
-    
+
 if __name__ == '__main__':
     
     ps_path = '/Users/ianijirahmae/Documents/DATASETS/Data_by_modality'
@@ -296,13 +307,13 @@ if __name__ == '__main__':
                 
             plt.axis('off')
             
+            # Convert agent actions -> 
             # Take input action (ie clicked position - original position), then scale
             if num_steps == 0:
                 current_pos = np.array([0,0])
             else:
                 current_pos = biopsy_env.get_current_pos()
-
-            # Convert agent actions -> positions to choose 
+            #positions to choose 
             suggested_pos = round_to_05((actions[0:-1] * 10) + current_pos)
             #my_pos = round_to_05((taken_actions[0:-1]*10) + current_pos)
             

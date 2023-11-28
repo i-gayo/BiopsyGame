@@ -90,7 +90,7 @@ class TemplateGuidedBiopsy(gym.Env):
 
     def __init__(self, DataSampler, obs_space = 'images', results_dir = 'test', env_num = '1', reward_fn = 'ccl', \
     miss_penalty = 2, terminating_condition = 'max_num_steps', train_mode = 'train', device = 'cpu', max_num_steps = 100, \
-      penalty = 5, deform = True, deform_scale = 0.1, deform_rate = 0.25, start_centre = False, tre = 3.0):
+      penalty = 5, deform = True, deform_scale = 0.1, deform_rate = 0.25, start_centre = True, tre = 3.0):
 
         """
         Actions : delta_x, delta_y, z (fire or no fire or variable depth)
@@ -115,9 +115,9 @@ class TemplateGuidedBiopsy(gym.Env):
         self.reward_fn = reward_fn
         self.num_needles = 0 
         self.max_num_needles = 4 #* self.num_lesions
-        self.num_needles_per_lesion = np.zeros(self.num_lesions)
+        self.num_needles_per_lesion = np.zeros(self.num_lesions) #ignore
         self.all_ccl = [] 
-        self.all_sizes = []
+        self.all_sizes = [] 
         self.max_num_steps_terminal = max_num_steps
         print(f"max num steps terminal : {self.max_num_steps_terminal}")
         self.step_count = 0 
@@ -134,6 +134,19 @@ class TemplateGuidedBiopsy(gym.Env):
         self.deform_scale = deform_scale 
         self.lesion_counter = 1 #iterator to go through each lesion and lesion idx 
         self.tre = tre 
+
+        
+        self.info = {'num_needles_per_lesion' : self.num_needles_per_lesion, 'all_ccl' : self.all_ccl,\
+             'all_lesion_size' : self.all_sizes, 
+             'ccl_corr' : 0, 'hit_rate' : 0, \
+               'new_patient' : False, 'ccl_corr_online' : 0 , \
+                'efficiency' : 0,'num_needles' : self.num_needles, \
+                  'max_num_needles' : self.max_num_needles, 'num_needles_hit' : 0, \
+                    'firing_grid' : self.firing_grid, 'hit_threshold_reached' : False, \
+                      'lesion_mask' : self.img_data['tumour_mask'],'current_pos' : np.array([0,0,0]),\
+                        'all_norm_ccl' : 0, 'norm_ccl' : 0, 'needle_hit' : False, 'lesion_centre' : np.array([0,0,0]),\
+                          'lesion_size' : 0, 'lesion_idx' : 0, 'patient_name' : ' ', 'ccl' : 0}
+
         
         # Defining deformation transformer to use
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -1544,6 +1557,11 @@ class TemplateGuidedBiopsy(gym.Env):
     
     def get_current_pos(self):
         return self.current_needle_pos
+    
+    def get_info(self):
+      return self.info
+       
+       
     
 if __name__ == '__main__':
 
