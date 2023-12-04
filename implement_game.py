@@ -80,7 +80,7 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
         max_num_steps = 20, deform = True, start_centre= True)
     data=biopsy_env.get_info()
     reward=0
-    total_reward=0
+    totalreward=0
     
     # Load agent
     policy_kwargs = dict(features_extractor_class = NewFeatureExtractor, features_extractor_kwargs=dict(multiple_frames = True, num_channels = 5))
@@ -95,10 +95,12 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
         vols = biopsy_env.get_img_data()
         done = False 
         num_steps = 0 
+        hit=""
         
         while ((num_steps <= 4)):
             # Obtain lesion and mri vols from data 
             lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
+            totalreward = totalreward + reward 
             
             mri_vol = vols['mri_vol']
             prostate_vol = vols['prostate_mask']
@@ -149,14 +151,15 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
                 plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
                 plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
             
-            plt.text(first_x - 15,last_y+16, ('Total Result:{} ') ,fontsize = 12.5, color = 'yellow')
-            plt.text((last_x*0.6), last_y+16, f'Current Result: {reward} ',fontsize = 12.5, color = 'greenyellow')
-            plt.text(first_x-15,first_y-15,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
+            #Displays the rewards metrics within the game 
+            #The data comes from the library from the info dictionary within game dev
+            #checking for needle hit 
+            if data["needle_hit"] == True: hit='HIT'
+            else: hit='MISS'
+            plt.text(first_x - 15,first_y-15, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
+            plt.text((last_x*0.6), first_y-15, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
+            plt.text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
             
-            # plt.text(first_x - 15,last_y+16, ('Total Result: ') ,fontsize = 12.5, color = 'yellow')
-            # plt.text((last_x*0.6), last_y+16, f'Current Result:  ',fontsize = 12.5, color = 'greenyellow')
-            # plt.text(first_x-15,first_y-15,f"CCL:",fontsize= 10.5,color = 'salmon')
-                
             plt.axis('off')
             
             # Take input action (ie clicked position - original position), then scale
