@@ -114,7 +114,18 @@ class TemplateGuidedBiopsy(gym.Env):
         self.done = False 
         self.reward_fn = reward_fn
         self.num_needles = 0 
-        self.max_num_needles = 4 #* self.num_lesions
+        #defining this and then i am defining it again since i kinda dont want to fuck it up 
+
+
+
+
+
+        self.max_num_needles = 4
+
+
+
+
+        #check this part out 
         self.num_needles_per_lesion = np.zeros(self.num_lesions) #ignore
         self.all_ccl = [] 
         self.all_sizes = [] 
@@ -135,19 +146,6 @@ class TemplateGuidedBiopsy(gym.Env):
         self.lesion_counter = 1 #iterator to go through each lesion and lesion idx 
         self.tre = tre 
 
-        
-        self.info = {'num_needles_per_lesion' : self.num_needles_per_lesion, 'all_ccl' : self.all_ccl,\
-             'all_lesion_size' : self.all_sizes, 
-             'ccl_corr' : 0, 'hit_rate' : 0, \
-               'new_patient' : False, 'ccl_corr_online' : 0 , \
-                'efficiency' : 0,'num_needles' : self.num_needles, \
-                  'max_num_needles' : self.max_num_needles, 'num_needles_hit' : 0, \
-                    'firing_grid' : self.firing_grid, 'hit_threshold_reached' : False, \
-                      'lesion_mask' : self.img_data['tumour_mask'],'current_pos' : np.array([0,0,0]),\
-                        'all_norm_ccl' : 0, 'norm_ccl' : 0, 'needle_hit' : False, 'lesion_centre' : np.array([0,0,0]),\
-                          'lesion_size' : 0, 'lesion_idx' : 0, 'patient_name' : ' ', 'ccl' : 0}
-
-        
         # Defining deformation transformer to use
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.random_transform = GridTransform(grid_size=[8,8,4], interp_type='linear', volsize=[100,100,24], batch_size=1, device=device)
@@ -160,7 +158,6 @@ class TemplateGuidedBiopsy(gym.Env):
         self.current_needle_pos = starting_pos # x and y only; 
         self.current_pos = current_pos # x,y,z depth current poss 
         
-
         # Correlation statistics
         self.r = 0
         self.xbar = 0
@@ -203,6 +200,33 @@ class TemplateGuidedBiopsy(gym.Env):
           fp.write(str(self.patient_name[0]))
           fp.write('\n')
 
+
+
+        self.info = {'num_needles_per_lesion' : self.num_needles_per_lesion, 'all_ccl' : self.all_ccl,\
+             'all_lesion_size' : self.all_sizes, 
+             'ccl_corr' : 0, 'hit_rate' : 0, \
+               'new_patient' : False, 'ccl_corr_online' : 0 , \
+                'efficiency' : 0,'num_needles' : self.num_needles, \
+                  'max_num_needles' : self.max_num_needles, 'num_needles_hit' : 0, \
+                    'firing_grid' : self.firing_grid, 'hit_threshold_reached' : False, \
+                      'lesion_mask' : self.img_data['tumour_mask'],'current_pos' : np.array([0,0,0]),\
+                        'all_norm_ccl' : 0, 'norm_ccl' : 0, 'needle_hit' : False, 'lesion_centre' : np.array([0,0,0]),\
+                          'lesion_size' : self.tumour_statistics['lesion_size'][self.lesion_idx], 'lesion_idx' : 0, 'patient_name' : ' ', 'ccl' : 0}
+        
+        #
+        if self.info['lesion_size']<=750:  
+          self.max_num_needles = 3 #* self.num_lesions
+        elif (self.info['lesion_size']>=751) and (self.info['lesion_size']<=1000):
+           self.max_num_needles = 4
+        elif (self.info['lesion_size']>=1001) and (self.info['lesion_size']<=2000):
+          self.max_num_needles = 5
+        elif (self.info['lesion_size']>=2001) and (self.info['lesion_size']<=20000):
+           self.max_num_needles = 6
+        else:
+           print("check for the lesion size (ERROR) within init")
+           print(f"Within the environment(info) the lesion size is : {self.info['lesion_size']}")
+
+          
     def step(self, action):
         
         """
@@ -522,7 +546,33 @@ class TemplateGuidedBiopsy(gym.Env):
           fp.write(str(self.patient_name[0]))
           fp.write('\n')
 
+
+        self.info = {'num_needles_per_lesion' : self.num_needles_per_lesion, 'all_ccl' : self.all_ccl,\
+             'all_lesion_size' : self.all_sizes, 
+             'ccl_corr' : 0, 'hit_rate' : 0, \
+               'new_patient' : False, 'ccl_corr_online' : 0 , \
+                'efficiency' : 0,'num_needles' : self.num_needles, \
+                  'max_num_needles' : self.max_num_needles, 'num_needles_hit' : 0, \
+                    'firing_grid' : self.firing_grid, 'hit_threshold_reached' : False, \
+                      'lesion_mask' : self.img_data['tumour_mask'],'current_pos' : np.array([0,0,0]),\
+                        'all_norm_ccl' : 0, 'norm_ccl' : 0, 'needle_hit' : False, 'lesion_centre' : np.array([0,0,0]),\
+                          'lesion_size' : self.tumour_statistics['lesion_size'][self.lesion_idx], 'lesion_idx' : 0, 'patient_name' : ' ', 'ccl' : 0}
+        
+        #
+        if self.info['lesion_size']<=750:  
+          self.max_num_needles = 3 #* self.num_lesions
+        elif (self.info['lesion_size']>=751) and (self.info['lesion_size']<=1000):
+           self.max_num_needles = 4
+        elif (self.info['lesion_size']>=1001) and (self.info['lesion_size']<=2000):
+          self.max_num_needles = 5
+        elif (self.info['lesion_size']>=2001) and (self.info['lesion_size']<=20000):
+           self.max_num_needles = 6
+        else:
+           print("check for the lesion size (ERROR) within reset")
+           print(f"Within the environment(reset) the lesion size is : {self.info['lesion_size']}")
+
         return initial_obs  # reward, done, info can't be included
+    
 
     def render(self, mode='human'):
         pass 

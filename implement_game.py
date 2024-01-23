@@ -66,7 +66,7 @@ def generate_grid_old(prostate_centroid):
     
     return grid, grid_coords
 
-def plotter(current_max_needle,reward,totalreward):
+def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data):
     """
     Responsible for generating the graph but also taking into account the maximum number of needles required
 
@@ -75,124 +75,118 @@ def plotter(current_max_needle,reward,totalreward):
 
 
     """
-    for i in range(NUM_EPISODES):
-        obs = biopsy_env.reset()
-        vols = biopsy_env.get_img_data()
-        done = False 
-        num_steps = 0 
-        hit=""
+    while ((num_steps <= current_max_needle)):
+        # Obtain lesion and mri vols from data 
+        lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
+        totalreward = totalreward + reward 
+
+        mri_vol = vols['mri_vol']
+        prostate_vol = vols['prostate_mask']
+        prostate_centroid = np.mean(np.where(prostate_vol), axis = 1)
+        #print(f"Game rostate centroid : {prostate_centroid}")
+        SLICE_NUM = int(prostate_centroid[-1])
+
+        # Define grid coords 
+        grid, grid_coords = generate_grid(prostate_centroid)
+
+        # Obtain agents predicted actions 
+        actions,_ = agent.predict(obs)
+        #TODO : convert this to action / grid pos for agents!!! 
+
+        fig, axs = plt.subplots(1)
+        mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
+        mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
+        mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
+        mask_n_1= np.ma.array(obs[-2,:,:,:].numpy(), mask=(obs[-2,:,:,:].numpy()==0.0))
+        mask_n_2= np.ma.array(obs[-3,:,:,:].numpy(), mask=(obs[-3,:,:,:].numpy()==0.0))
+        mri_ds = mri_vol[::2,::2,::4]
+        needle = np.ma.array(grid, mask = (grid == 0.0))
+        #needle_ds = needle[::2,::2]
+        x_cent = int(prostate_centroid[1]/2)
+        y_cent = int(prostate_centroid[0]/2)
+
+        # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
+        plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
+        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
+        plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
+        plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
+        plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
+        plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+
+        # ADDING labels to grid positions!!!
+        first_x = np.min(np.where(grid == 1)[1])
+        first_y = np.min(np.where(grid == 1)[0])
+        last_x = np.max(np.where(grid == 1)[1])
+        last_y = np.max(np.where(grid == 1)[0])
+        s = 'A  a  B  b  C  c  D  d  E  e  F  f  G' # fontsize 10.5 
+        #s = '-30 -25 -20 -15 -10 -5 0 5 10 15 20 25 30' #font size 8
+        plt.text(first_x, first_y - 5, s, fontsize = 10.5, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
+        grid_labels = np.arange(7, 0.5, -0.5)
+        #grid_labels = np.arange(-30, 35, 5)
+        for idx, label in enumerate(grid_labels):
+            plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
+            plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
+
+        #Displays the rewards metrics within the game 
+        #The data comes from the library from the info dictionary within game dev
+        #checking for needle hit 
+        if data["needle_hit"] == True: hit='HIT'
+        else: hit='MISS'
+        plt.text(first_x - 18,first_y-14.5, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
+        plt.text((last_x*0.5), first_y-14.5, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
+        plt.text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
+        #print (f"The current lesion size is : {data['lesion_size']}")
+
+        plt.axis('off')
+
+        # Take input action (ie clicked position - original position), then scale
+        if num_steps == 0:
+            current_pos = np.array([0,0])
+        else:
+            current_pos = biopsy_env.get_current_pos()
 
 
-        while ((num_steps <= current_max_needle)):
-            # Obtain lesion and mri vols from data 
-            lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
-            totalreward = totalreward + reward 
+        # Convert agent actions -> positions to choose 
+        suggested_pos = round_to_05((actions[0:-1] * 10) + current_pos)
+        #my_pos = round_to_05((taken_actions[0:-1]*10) + current_pos)
 
-            mri_vol = vols['mri_vol']
-            prostate_vol = vols['prostate_mask']
-            prostate_centroid = np.mean(np.where(prostate_vol), axis = 1)
-            #print(f"Game rostate centroid : {prostate_centroid}")
-            SLICE_NUM = int(prostate_centroid[-1])
+        # Convert predicted actions to grid pos (A, E)
+        x_dict = ['A', 'a', 'B', 'b', 'C', 'c', 'D', 'd', 'E', 'e', 'F', 'f', 'G']
+        grid_vals = np.arange(-30,35, 5)
+        x_idx = x_dict[(np.where(grid_vals == suggested_pos[0]))[0][0]]
 
-            # Define grid coords 
-            grid, grid_coords = generate_grid(prostate_centroid)
+        y_dict = [str(num) for num in np.arange(7, 0.5, -0.5)]
+        y_idx = y_dict[(np.where(grid_vals == suggested_pos[1]))[0][0]]
 
-            # Obtain agents predicted actions 
-            actions,_ = agent.predict(obs)
-            #TODO : convert this to action / grid pos for agents!!! 
-
-            fig, axs = plt.subplots(1)
-            mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
-            mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
-            mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
-            mask_n_1= np.ma.array(obs[-2,:,:,:].numpy(), mask=(obs[-2,:,:,:].numpy()==0.0))
-            mask_n_2= np.ma.array(obs[-3,:,:,:].numpy(), mask=(obs[-3,:,:,:].numpy()==0.0))
-            mri_ds = mri_vol[::2,::2,::4]
-            needle = np.ma.array(grid, mask = (grid == 0.0))
-            #needle_ds = needle[::2,::2]
-            x_cent = int(prostate_centroid[1]/2)
-            y_cent = int(prostate_centroid[0]/2)
-
-            # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
-            plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
-            plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
-            plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
-            plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-            plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-            plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
-            plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
-            plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
-
-            # ADDING labels to grid positions!!!
-            first_x = np.min(np.where(grid == 1)[1])
-            first_y = np.min(np.where(grid == 1)[0])
-            last_x = np.max(np.where(grid == 1)[1])
-            last_y = np.max(np.where(grid == 1)[0])
-            s = 'A  a  B  b  C  c  D  d  E  e  F  f  G' # fontsize 10.5 
-            #s = '-30 -25 -20 -15 -10 -5 0 5 10 15 20 25 30' #font size 8
-            plt.text(first_x, first_y - 5, s, fontsize = 10.5, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
-            grid_labels = np.arange(7, 0.5, -0.5)
-            #grid_labels = np.arange(-30, 35, 5)
-            for idx, label in enumerate(grid_labels):
-                plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
-                plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
-
-            #Displays the rewards metrics within the game 
-            #The data comes from the library from the info dictionary within game dev
-            #checking for needle hit 
-            if data["needle_hit"] == True: hit='HIT'
-            else: hit='MISS'
-            plt.text(first_x - 14,first_y-15, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
-            plt.text((last_x*0.55), first_y-15, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
-            plt.text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
-            print (f"The current lesion size is : {data['lesion_size']}")
-
-            plt.axis('off')
-
-            # Take input action (ie clicked position - original position), then scale
-            if num_steps == 0:
-                current_pos = np.array([0,0])
-            else:
-                current_pos = biopsy_env.get_current_pos()
-
-
-            # Convert agent actions -> positions to choose 
-            suggested_pos = round_to_05((actions[0:-1] * 10) + current_pos)
-            #my_pos = round_to_05((taken_actions[0:-1]*10) + current_pos)
-
-            # Convert predicted actions to grid pos (A, E)
-            x_dict = ['A', 'a', 'B', 'b', 'C', 'c', 'D', 'd', 'E', 'e', 'F', 'f', 'G']
-            grid_vals = np.arange(-30,35, 5)
-            x_idx = x_dict[(np.where(grid_vals == suggested_pos[0]))[0][0]]
-
-            y_dict = [str(num) for num in np.arange(7, 0.5, -0.5)]
-            y_idx = y_dict[(np.where(grid_vals == suggested_pos[1]))[0][0]]
-
-            suggested_str = 'Suggested GRID POSITION: [' + x_idx + ',' + y_idx + ']'
-            plt.text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
+        suggested_str = 'Suggested GRID POSITION: [' + x_idx + ',' + y_idx + ']'
+        plt.text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
 
 
 
-            ### 4. Take in user actions to implement strategy ###
-            grid_pos = plt.ginput(1,0) #0,0)     
-            #grid_pos = round_to_05(np.array(grid_pos[0]))
-            prostate_cent_xy = np.array([prostate_centroid[1], prostate_centroid[0]])/2
-            grid_pos -= ((prostate_cent_xy))
+        ### 4. Take in user actions to implement strategy ###
+        grid_pos = plt.ginput(1,0) #0,0)     
+        #grid_pos = round_to_05(np.array(grid_pos[0]))
+        prostate_cent_xy = np.array([prostate_centroid[1], prostate_centroid[0]])/2
+        grid_pos -= ((prostate_cent_xy))
 
-            raw_actions = np.round(grid_pos - current_pos)
-            taken_actions = round_to_05(np.round(grid_pos - current_pos))
+        raw_actions = np.round(grid_pos - current_pos)
+        taken_actions = round_to_05(np.round(grid_pos - current_pos))
 
-            taken_actions = taken_actions / 10 # normalise between (-1,1)  
-            #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
-            taken_actions = np.append(taken_actions, ([1]))                                                                                         
+        taken_actions = taken_actions / 10 # normalise between (-1,1)  
+        #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
+        taken_actions = np.append(taken_actions, ([1]))                                                                                         
 
-            # Take step in environment 
-            obs, reward, done, data = biopsy_env.step(taken_actions)
+        # Take step in environment 
+        obs, reward, done, data = biopsy_env.step(taken_actions)
 
-            #print(f"Current pos : {current_pos}Agent suggested actions : {actions} our actions : {taken_actions} \n Done :{done} num_steps {num_steps}")
-            num_steps += 1
+        #print(f"Current pos : {current_pos}Agent suggested actions : {actions} our actions : {taken_actions} \n Done :{done} num_steps {num_steps}")
+        num_steps += 1
 
-            plt.close()
+        plt.close()
+
+    return obs,reward,data,totalreward
 
 def run_game(NUM_EPISODES=5, log_dir = 'game'):
     
@@ -215,140 +209,33 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
     agent = PPO(CnnPolicy, env = biopsy_env, policy_kwargs = policy_kwargs)
     
     # Run game for num episodes
-    #print(f"Loading game script. Running for {NUM_EPISODES} episodes")
+    #princh t(f"Loading game script. Running for {NUM_EPISODES} episodes")
 
-    if data['lesion_size']<=700:
-        plotter(3,reward,totalreward)
-    elif data['lesion_size'] in range (700,1000):
-        plotter(4,reward,totalreward)
-    elif data['lesion_size'] in range (1000,2000):
-        plotter(5,reward,totalreward)
-    elif data['lesion_size'] in range (2000,7000):
-        plotter(6,reward,totalreward)
-    else:
-        print("Check again for lesion size (ERROR) everything should have been accounted for ")
+    for i in range(NUM_EPISODES):
+        obs = biopsy_env.reset()
+        vols = biopsy_env.get_img_data()
+        done = False 
+        num_steps = 0 
+        hit=""
+        current_patient=biopsy_env.get_info()
+        #checking for lesion size of the next patient
 
-
-
-"""  for i in range(NUM_EPISODES):
-    
-    obs = biopsy_env.reset()
-    vols = biopsy_env.get_img_data()
-    done = False 
-    num_steps = 0 
-    hit=""
-    
-    
-    while ((num_steps <= 3)):
-        # Obtain lesion and mri vols from data 
-        lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
-        totalreward = totalreward + reward 
+        print(current_patient['lesion_size'])
         
-        mri_vol = vols['mri_vol']
-        prostate_vol = vols['prostate_mask']
-        prostate_centroid = np.mean(np.where(prostate_vol), axis = 1)
-        #print(f"Game rostate centroid : {prostate_centroid}")
-        SLICE_NUM = int(prostate_centroid[-1])
-        
-        # Define grid coords 
-        grid, grid_coords = generate_grid(prostate_centroid)
-
-        # Obtain agents predicted actions 
-        actions,_ = agent.predict(obs)
-        #TODO : convert this to action / grid pos for agents!!! 
-        
-        fig, axs = plt.subplots(1)
-        mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
-        mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
-        mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
-        mask_n_1= np.ma.array(obs[-2,:,:,:].numpy(), mask=(obs[-2,:,:,:].numpy()==0.0))
-        mask_n_2= np.ma.array(obs[-3,:,:,:].numpy(), mask=(obs[-3,:,:,:].numpy()==0.0))
-        mri_ds = mri_vol[::2,::2,::4]
-        needle = np.ma.array(grid, mask = (grid == 0.0))
-        #needle_ds = needle[::2,::2]
-        x_cent = int(prostate_centroid[1]/2)
-        y_cent = int(prostate_centroid[0]/2)
-        
-        # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
-        plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
-        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
-        plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
-        plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
-        plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
-        plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
-        
-        # ADDING labels to grid positions!!!
-        first_x = np.min(np.where(grid == 1)[1])
-        first_y = np.min(np.where(grid == 1)[0])
-        last_x = np.max(np.where(grid == 1)[1])
-        last_y = np.max(np.where(grid == 1)[0])
-        s = 'A  a  B  b  C  c  D  d  E  e  F  f  G' # fontsize 10.5 
-        #s = '-30 -25 -20 -15 -10 -5 0 5 10 15 20 25 30' #font size 8
-        plt.text(first_x, first_y - 5, s, fontsize = 10.5, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
-        grid_labels = np.arange(7, 0.5, -0.5)
-        #grid_labels = np.arange(-30, 35, 5)
-        for idx, label in enumerate(grid_labels):
-            plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
-            plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
-        
-        #Displays the rewards metrics within the game 
-        #The data comes from the library from the info dictionary within game dev
-        #checking for needle hit 
-        if data["needle_hit"] == True: hit='HIT'
-        else: hit='MISS'
-        plt.text(first_x - 14,first_y-15, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
-        plt.text((last_x*0.55), first_y-15, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
-        plt.text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
-        print (f"The current lesion size is : {data['lesion_size']}")
-        
-        plt.axis('off')
-        
-        # Take input action (ie clicked position - original position), then scale
-        if num_steps == 0:
-            current_pos = np.array([0,0])
+        if current_patient['lesion_size']<=750:
+            obs,reward,data,totalreward=plotter(3,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
+            print("Threshold a ")
+        elif current_patient['lesion_size']>=751 and current_patient['lesion_size']<=1000 :
+            obs,reward,data,totalreward=plotter(4,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
+            print("Threshold b ")
+        elif current_patient['lesion_size']>=1001 and current_patient['lesion_size']<=2000 :
+            obs,reward,data,totalreward=plotter(5,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
+            print("Threshold c ")
+        elif current_patient['lesion_size']>=2001 and current_patient['lesion_size']<=20000:
+            obs,reward,data,totalreward=plotter(6,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
+            print("Threshold d ")
         else:
-            current_pos = biopsy_env.get_current_pos()
-        
-
-        # Convert agent actions -> positions to choose 
-        suggested_pos = round_to_05((actions[0:-1] * 10) + current_pos)
-        #my_pos = round_to_05((taken_actions[0:-1]*10) + current_pos)
-        
-        # Convert predicted actions to grid pos (A, E)
-        x_dict = ['A', 'a', 'B', 'b', 'C', 'c', 'D', 'd', 'E', 'e', 'F', 'f', 'G']
-        grid_vals = np.arange(-30,35, 5)
-        x_idx = x_dict[(np.where(grid_vals == suggested_pos[0]))[0][0]]
-        
-        y_dict = [str(num) for num in np.arange(7, 0.5, -0.5)]
-        y_idx = y_dict[(np.where(grid_vals == suggested_pos[1]))[0][0]]
-        
-        suggested_str = 'Suggested GRID POSITION: [' + x_idx + ',' + y_idx + ']'
-        plt.text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
-        
-        
-        
-        ### 4. Take in user actions to implement strategy ###
-        grid_pos = plt.ginput(1,0) #0,0)     
-        #grid_pos = round_to_05(np.array(grid_pos[0]))
-        prostate_cent_xy = np.array([prostate_centroid[1], prostate_centroid[0]])/2
-        grid_pos -= ((prostate_cent_xy))
-
-        raw_actions = np.round(grid_pos - current_pos)
-        taken_actions = round_to_05(np.round(grid_pos - current_pos))
-
-        taken_actions = taken_actions / 10 # normalise between (-1,1)  
-        #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
-        taken_actions = np.append(taken_actions, ([1]))                                                                                         
-        
-        # Take step in environment 
-        obs, reward, done, data = biopsy_env.step(taken_actions)
-        
-        #print(f"Current pos : {current_pos}Agent suggested actions : {actions} our actions : {taken_actions} \n Done :{done} num_steps {num_steps}")
-        num_steps += 1
-
-        plt.close() """
+            print("Check again for lesion size (ERROR) everything should have been accounted for ")
 
 if __name__ == '__main__':
     
