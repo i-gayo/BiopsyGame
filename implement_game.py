@@ -70,10 +70,6 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
     """
     Responsible for generating the graph but also taking into account the maximum number of needles required
 
-
-
-
-
     """
     while ((num_steps <= current_max_needle)):
         # Obtain lesion and mri vols from data 
@@ -92,8 +88,11 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         # Obtain agents predicted actions 
         actions,_ = agent.predict(obs)
         #TODO : convert this to action / grid pos for agents!!! 
+    
+        #creating another subplot 
+        fig, axs = plt.subplots(1,2)
 
-        fig, axs = plt.subplots(1)
+        #plotting for the axial view 
         mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
         mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
         mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
@@ -106,6 +105,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         y_cent = int(prostate_centroid[0]/2)
 
         # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
+        fig.add_subplot(1,2,1)
         plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
         plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
         plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
@@ -114,6 +114,34 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
         plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
         plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+
+
+
+
+
+        # plotting for the sagittal view 
+        #recreating the masks for the sagittal view 
+        mask_l_sview = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
+        mask_p_sview = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
+        mask_n_sview= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
+        mask_n_1_sview= np.ma.array(obs[-2,:,:,:].numpy(), mask=(obs[-2,:,:,:].numpy()==0.0))
+        mask_n_2_sview= np.ma.array(obs[-3,:,:,:].numpy(), mask=(obs[-3,:,:,:].numpy()==0.0))
+        mri_ds_sview = mri_vol[::2,::2,::4]
+   
+        #showing the new plot 
+        fig.add_subplot(1,2,2)
+        plt.imshow(mri_ds[:,int(SLICE_NUM/2),:], cmap ='gray')
+        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
+        # plt.imshow(np.max(mask_p_sview[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
+        # plt.imshow(np.max(mask_n_1_sview[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        # plt.imshow(np.max(mask_n_2_sview[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
+        # plt.imshow(np.max(mask_l_sview[:,:,:], axis =2),cmap='summer', alpha=0.6)
+        # plt.imshow(np.max(mask_n_sview[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+ 
+
+
+
 
         # ADDING labels to grid positions!!!
         first_x = np.min(np.where(grid == 1)[1])
@@ -302,7 +330,8 @@ if __name__ == '__main__':
             actions,_ = agent.predict(obs)
             #TODO : convert this to action / grid pos for agents!!! 
             
-            fig, axs = plt.subplots(1)
+            #adding an additional subplot 
+            fig, axs = plt.subplots(1,2)
             mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
             mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
             mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
@@ -314,6 +343,8 @@ if __name__ == '__main__':
             x_cent = int(prostate_centroid[1]/2)
             y_cent = int(prostate_centroid[0]/2)
             
+
+            #plot for the axial view 
             # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
             plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
             plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
@@ -324,6 +355,13 @@ if __name__ == '__main__':
             plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
             plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
             
+
+
+            #plot for the sagittal view 
+
+
+
+
             # ADDING labels to grid positions!!!
             first_x = np.min(np.where(grid == 1)[1])
             first_y = np.min(np.where(grid == 1)[0])
