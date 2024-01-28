@@ -66,6 +66,34 @@ def generate_grid_old(prostate_centroid):
     
     return grid, grid_coords
 
+def multiple_display(mri_data):
+    #CODE TO SHOW MULTIPLE SLICES AT ONCE
+    # Determine the number of slices to display (e.g., 20 slices)
+    num_slices_to_display = 20
+
+    # Calculate the spacing between the slices
+    num_slices_total = mri_data.shape[0]
+    slice_spacing = max(1, num_slices_total // num_slices_to_display)
+
+    # Create a figure with subplots for displaying the slices
+    fig, axes = plt.subplots(4, 5, figsize=(15, 12))
+
+    # Iterate through and display the selected slices
+    for i in range(num_slices_to_display):
+        slice_index = i * slice_spacing
+        ax = axes[i // 5, i % 5]
+        ax.imshow(mri_data[:, slice_index, :], cmap='gray')
+        ax.set_title(f"Slice {slice_index + 1}")
+        ax.axis('off')
+
+    # Adjust spacing between subplots
+    plt.tight_layout()
+
+    # Show the plot
+    plt.show()
+    plt.text(20, 20, 'matplotlib EXAMPLE',color = 'green', horizontalalignment='center',verticalalignment='center')
+    plt.show()
+
 def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data):
     """
     Responsible for generating the graph but also taking into account the maximum number of needles required
@@ -90,7 +118,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         #TODO : convert this to action / grid pos for agents!!! 
     
         #creating another subplot 
-        fig, axs = plt.subplots(1)
+        fig, axs = plt.subplots(1,2,figsize=(15,5))
 
         #plotting for the axial view 
         mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
@@ -104,36 +132,43 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         x_cent = int(prostate_centroid[1]/2)
         y_cent = int(prostate_centroid[0]/2)
 
-        # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
-        # plt.figure(1)
-        # plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
-        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
-        # plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
-        # plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        # plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
-        # plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
-        # plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
-        # plt.show()
-
-        # plotting for the sagittal view 
-        #recreating the masks for the sagittal view
-        mri_ds = mri_vol[::2,::2,::4]
-        mri_ds_sviewt1 = np.transpose(mri_ds,[0,2,1])
-        mri_ds_sviewt2 = np.transpose(mri_ds,[2,0,1])
-   
+        #plotting for the sagittal view 
+        mri_ds_sviewt1 = np.transpose(mri_ds,[2,0,1])
+        mri_ds_sviewt2 = np.transpose(mri_ds,[1,0,2])
+        mri_vol_shape= np.shape(mri_vol)
+        dimensions=[0.5,0.5,1]
+        #setting the spatial coordinates of the voxels
+        # x_axis = np.arange(mri_vol_shape[0]) * dimensions[0]
+        # y_axis = np.arange(mri_vol_shape[1]) * dimensions[1]
+        # z_axis = np.arange(mri_vol_shape[2]) * dimensions[2]
+        # aspect_ratio = 1
+        #print(f"the shape of mri_vol is {np.shape(mri_ds)}")
         #showing the new plot 
-        plt.figure(1)
-        plt.title(f"This is the {SLICE_NUM/4} slice in the z axis")
-        plt.imshow(mri_ds[:,:,int([SLICE_NUM/4])], cmap ='gray')
-        print(f"the shape of mri_vol is {np.shape(mri_vol)}")
-        plt.figure(2)
-        plt.title("This is the 15th slice in the y axis but transposed using transpose [0,2,1]")
-        plt.imshow(mri_ds_sviewt1[:,15,:], cmap ='gray')
-        plt.figure(3)
-        plt.title("This is the 15th slice in the x axis but transposed using transpose [2,0,1]")
-        plt.imshow(mri_ds_sviewt2[15,:,:], cmap ='gray')
-        plt.axis('off')
+        axs[0].set_title("This is the slice_num/2 in the x axis but transposed using transpose [2,0,1]")
+        axs[0].imshow(mri_ds_sviewt1[int(SLICE_NUM/2),:,:], cmap ='gray')
+        # plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
+        # print(f"the shape of mri_vol is {np.shape(mri_ds)}")
+        # plt.figure(2)
+        # plt.title("This is the 15th slice in the y axis but transposed using transpose [0,2,1]")
+        # plt.imshow(mri_ds_sviewt2[:,15,:], cmap ='gray')
+        # plt.figure(3)
+        # plt.title("This is the 15th slice in the x axis but transposed using transpose [2,0,1]")
+        # plt.imshow(mri_ds_sviewt1[15,:,:], cmap ='gray')
+
+        #the axial view 
+        # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
+        axs[1].imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
+        axs[1].imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
+        axs[1].imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
+        axs[1].imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        axs[1].imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        axs[1].imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
+        axs[1].imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
+        axs[1].imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+        print(f"the shape of mri_vol is {np.shape(mri_ds)}")
+        plt.show()
+
+        #multiple_display(mri_ds_sviewt2)
 
         # ADDING labels to grid positions!!!
         first_x = np.min(np.where(grid == 1)[1])
@@ -182,8 +217,6 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
 
         suggested_str = 'Suggested GRID POSITION: [' + x_idx + ',' + y_idx + ']'
         plt.text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
-
-
 
         ### 4. Take in user actions to implement strategy ###
         grid_pos = plt.ginput(1,0) #0,0)     
