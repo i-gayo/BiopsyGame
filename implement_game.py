@@ -90,7 +90,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         #TODO : convert this to action / grid pos for agents!!! 
     
         #creating another subplot 
-        fig, axs = plt.subplots(1,2)
+        fig, axs = plt.subplots(1)
 
         #plotting for the axial view 
         mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
@@ -105,43 +105,35 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         y_cent = int(prostate_centroid[0]/2)
 
         # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
-        fig.add_subplot(1,2,1)
-        plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
-        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
-        plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
-        plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
-        plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
-        plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
-
-
-
-
+        # plt.figure(1)
+        # plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
+        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
+        # plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
+        # plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        # plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
+        # plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
+        # plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+        # plt.show()
 
         # plotting for the sagittal view 
-        #recreating the masks for the sagittal view 
-        mask_l_sview = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
-        mask_p_sview = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
-        mask_n_sview= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
-        mask_n_1_sview= np.ma.array(obs[-2,:,:,:].numpy(), mask=(obs[-2,:,:,:].numpy()==0.0))
-        mask_n_2_sview= np.ma.array(obs[-3,:,:,:].numpy(), mask=(obs[-3,:,:,:].numpy()==0.0))
-        mri_ds_sview = mri_vol[::2,::2,::4]
+        #recreating the masks for the sagittal view
+        mri_ds = mri_vol[::2,::2,::4]
+        mri_ds_sviewt1 = np.transpose(mri_ds,[0,2,1])
+        mri_ds_sviewt2 = np.transpose(mri_ds,[2,0,1])
    
         #showing the new plot 
-        fig.add_subplot(1,2,2)
-        plt.imshow(mri_ds[:,int(SLICE_NUM/2),:], cmap ='gray')
-        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
-        # plt.imshow(np.max(mask_p_sview[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
-        # plt.imshow(np.max(mask_n_1_sview[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        # plt.imshow(np.max(mask_n_2_sview[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
-        # plt.imshow(np.max(mask_l_sview[:,:,:], axis =2),cmap='summer', alpha=0.6)
-        # plt.imshow(np.max(mask_n_sview[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
- 
-
-
-
+        plt.figure(1)
+        plt.title(f"This is the {SLICE_NUM/4} slice in the z axis")
+        plt.imshow(mri_ds[:,:,int([SLICE_NUM/4])], cmap ='gray')
+        print(f"the shape of mri_vol is {np.shape(mri_vol)}")
+        plt.figure(2)
+        plt.title("This is the 15th slice in the y axis but transposed using transpose [0,2,1]")
+        plt.imshow(mri_ds_sviewt1[:,15,:], cmap ='gray')
+        plt.figure(3)
+        plt.title("This is the 15th slice in the x axis but transposed using transpose [2,0,1]")
+        plt.imshow(mri_ds_sviewt2[15,:,:], cmap ='gray')
+        plt.axis('off')
 
         # ADDING labels to grid positions!!!
         first_x = np.min(np.where(grid == 1)[1])
@@ -331,7 +323,7 @@ if __name__ == '__main__':
             #TODO : convert this to action / grid pos for agents!!! 
             
             #adding an additional subplot 
-            fig, axs = plt.subplots(1,2)
+            fig, axs = plt.subplots(1)
             mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
             mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
             mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
@@ -354,12 +346,6 @@ if __name__ == '__main__':
             plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
             plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
             plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
-            
-
-
-            #plot for the sagittal view 
-
-
 
 
             # ADDING labels to grid positions!!!
