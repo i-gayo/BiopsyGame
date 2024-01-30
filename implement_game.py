@@ -7,34 +7,86 @@ from Envs.biopsy_env import *
 from stable_baselines3 import PPO
 from stable_baselines3.ppo.policies import CnnPolicy
 
-def generate_grid(prostate_centroid):
+def slice_select(slice_num):
     """
-    Generates 2D grid of grid point coords on image coordinates
+    Prompts the user to slect a slice to view 
     
-    Arguments:
-    :prostate_centroid (ndarray) : centroid in x,y,z convention of prostate gland 
+    Arguements:
+    slice_num (int): The total number of slices available in the targeted view
     
     Returns:
-    :grid_coords (ndarray) : 2 x 169 grid coords x,y convention 
-    """
-    
-    x_grid = (np.arange(-30,35,5))*2 + prostate_centroid[0]
-    y_grid = (np.arange(-30,35,5))*2 + prostate_centroid[1]
+    selected_slice: (int) : The selected slice number."""
+    while True:
+        try:
+            selected_slice= int(input(f"Enter the slice number to view from the range (0-{slice_num-1}) : "))
+            if 0 <= selected_slice < slice_num:
+                return selected_slice
+            else:
+                print(f"Please enter a number between 0 and {slice_num-1}.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
 
-    grid = np.zeros((100,100))
-    for i in range(-30, 35, 5):
-        for j in range(-30, 35, 5):
-            x_val = round(prostate_centroid[1]/2)+j
-            y_val = round(prostate_centroid[0]/2) +i
-            
-            grid[y_val - 1:y_val+2 , x_val -1 : x_val+2] = 1
+def sagittal_plot(mri_ds,mri_vol):
+        """
+        Generates a plot of the sagittal view continously generating plots when a new input is 
+        """
+        mri_ds_sviewt1 = np.transpose(mri_ds,[2,0,1])
+        mri_vol_shape = np.shape(mri_ds_sviewt1)
+        prev_slice_num = None
 
-    grid_coords = np.array(np.where(grid == 1))  # given in y, x 
-    
-    # change to x,y convention instead of y,x 
-    grid_coords[[0,1],:] = grid_coords[[1,0],:]
-    
-    return grid, grid_coords
+        while True:
+            try:
+                user_input = input(f"Please enter a number between 0 and {mri_vol_shape[0] - 1} ('exit' to quit): ")
+                if user_input.lower() == 'exit':
+                    break
+
+                selected_slice = int(user_input)
+                if selected_slice < 0 or selected_slice >= mri_vol_shape[0]:
+                    continue
+
+                if selected_slice == prev_slice_num:
+                    print("You've selected the same slice. Displaying again.")
+                else:
+                    plt.figure(1)
+                    plt.title(f"Slice No: {selected_slice} sagittal view ")
+                    plt.imshow(mri_ds_sviewt1[int(selected_slice/4),:,:], cmap ='gray')
+                    plt.show()
+
+                prev_slice_num = selected_slice
+
+            except ValueError:
+                print("Invalid input. Please enter a valid number.")
+        
+
+
+def generate_grid(prostate_centroid):
+        """
+        Generates 2D grid of grid point coords on image coordinates
+        
+        Arguments:
+        :prostate_centroid (ndarray) : centroid in x,y,z convention of prostate gland 
+        
+        Returns:
+        :grid_coords (ndarray) : 2 x 169 grid coords x,y convention 
+        """
+        
+        x_grid = (np.arange(-30,35,5))*2 + prostate_centroid[0]
+        y_grid = (np.arange(-30,35,5))*2 + prostate_centroid[1]
+
+        grid = np.zeros((100,100))
+        for i in range(-30, 35, 5):
+            for j in range(-30, 35, 5):
+                x_val = round(prostate_centroid[1]/2)+j
+                y_val = round(prostate_centroid[0]/2) +i
+                
+                grid[y_val - 1:y_val+2 , x_val -1 : x_val+2] = 1
+
+        grid_coords = np.array(np.where(grid == 1))  # given in y, x 
+        
+        # change to x,y convention instead of y,x 
+        grid_coords[[0,1],:] = grid_coords[[1,0],:]
+        
+        return grid, grid_coords
 
 
 def generate_grid_old(prostate_centroid):
@@ -118,7 +170,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         #TODO : convert this to action / grid pos for agents!!! 
     
         #creating another subplot 
-        fig, axs = plt.subplots(1,2,figsize=(15,5))
+        fig, axs = plt.subplots(1)
 
         #plotting for the axial view 
         mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
@@ -133,19 +185,26 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         y_cent = int(prostate_centroid[0]/2)
 
         #plotting for the sagittal view 
-        mri_ds_sviewt1 = np.transpose(mri_ds,[2,0,1])
-        mri_ds_sviewt2 = np.transpose(mri_ds,[1,0,2])
-        mri_vol_shape= np.shape(mri_vol)
-        dimensions=[0.5,0.5,1]
-        #setting the spatial coordinates of the voxels
+        # mri_ds_sviewt1 = np.transpose(mri_ds,[2,0,1])
+        # mri_ds_sviewt2 = np.transpose(mri_ds,[1,0,2])
+        # mri_vol_shape= np.shape(mri_vol)
+        # dimensions=[0.5,0.5,1]
+        sagittal_plot(mri_ds,mri_vol)
+
+        # #setting the spatial coordinates of the voxels
         # x_axis = np.arange(mri_vol_shape[0]) * dimensions[0]
         # y_axis = np.arange(mri_vol_shape[1]) * dimensions[1]
         # z_axis = np.arange(mri_vol_shape[2]) * dimensions[2]
         # aspect_ratio = 1
-        #print(f"the shape of mri_vol is {np.shape(mri_ds)}")
-        #showing the new plot 
-        axs[0].set_title("This is the slice_num/2 in the x axis but transposed using transpose [2,0,1]")
-        axs[0].imshow(mri_ds_sviewt1[int(SLICE_NUM/2),:,:], cmap ='gray')
+        # print(f"the shape of mri_vol is {np.shape(mri_ds)}")
+        # showing the new plot  
+
+        # plt.figure(1)
+        # selected_slice = slice_select(mri_vol_shape[0])
+        # print (f"The selected slice is:{selected_slice}")
+        # plt.title(f"Slice No: {selected_slice} sagittal view ")
+        # plt.imshow(mri_ds_sviewt1[int(SLICE_NUM/2),:,:], cmap ='gray')
+
         # plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
         # print(f"the shape of mri_vol is {np.shape(mri_ds)}")
         # plt.figure(2)
@@ -153,23 +212,23 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         # plt.imshow(mri_ds_sviewt2[:,15,:], cmap ='gray')
         # plt.figure(3)
         # plt.title("This is the 15th slice in the x axis but transposed using transpose [2,0,1]")
-        # plt.imshow(mri_ds_sviewt1[15,:,:], cmap ='gray')
+        # plt.imshow(mri_ds_sviewt1[15,:,:], cmap ='gray') 
 
         #the axial view 
         # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
-        axs[1].imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
-        axs[1].imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
-        axs[1].imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
-        axs[1].imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        axs[1].imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        axs[1].imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
-        axs[1].imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
-        axs[1].imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+        plt.figure(2)
+        plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
+        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
+        plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
+        plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
+        plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
+        plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
         print(f"the shape of mri_vol is {np.shape(mri_ds)}")
-        plt.show()
 
         #multiple_display(mri_ds_sviewt2)
-
+        
         # ADDING labels to grid positions!!!
         first_x = np.min(np.where(grid == 1)[1])
         first_y = np.min(np.where(grid == 1)[0])
@@ -217,6 +276,8 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
 
         suggested_str = 'Suggested GRID POSITION: [' + x_idx + ',' + y_idx + ']'
         plt.text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
+        # End of all the plots and figures so show them here 
+        plt.show()
 
         ### 4. Take in user actions to implement strategy ###
         grid_pos = plt.ginput(1,0) #0,0)     
