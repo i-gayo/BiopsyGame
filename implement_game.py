@@ -78,8 +78,6 @@ def view_test(mri_ds,mri_vol_shape,dimensions):
     plt.title("Slice on 3rd column")
     plt.imshow(mri_ds[:,:,15], cmap ='gray') 
 
-
-
 def generate_grid(prostate_centroid):
         """
         Generates 2D grid of grid point coords on image coordinates
@@ -108,7 +106,6 @@ def generate_grid(prostate_centroid):
         grid_coords[[0,1],:] = grid_coords[[1,0],:]
         
         return grid, grid_coords
-
 
 def generate_grid_old(prostate_centroid):
     """
@@ -207,6 +204,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         y_cent = int(prostate_centroid[0]/2)
 
         #plotting for the sagittal view 
+        # mri_ds_sviewt1 = mri_ds
         mri_ds_sviewt1 = np.transpose(mri_ds,[2,1,0])
         mri_vol_shape= np.shape(mri_vol)
         dimensions=[0.5,0.5,1]
@@ -217,15 +215,15 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
 
         #the axial view 
         # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
-        plt.figure(1)
-        plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
-        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
-        plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
-        plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
-        plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
-        plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+        # plt.figure(1)
+        # plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
+        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
+        # plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
+        # plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        # plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
+        # plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
+        # plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
         # print(f"the shape of mri_vol is {np.shape(mri_ds)}")
         
         # ADDING labels to grid positions!!!
