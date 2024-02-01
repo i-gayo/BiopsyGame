@@ -26,22 +26,24 @@ def slice_select(slice_num):
         except ValueError:
             print("Invalid input. Please enter a number.")
 
-def sagittal_plot(mri_ds,mri_vol):
+def sagittal_plot(mri_ds,mri_vol_shape):
         """
         Generates a plot of the sagittal view continously generating plots when a new input is 
         """
-        mri_ds_sviewt1 = np.transpose(mri_ds,[2,0,1])
+        mri_ds_sviewt1= mri_ds
+        mri_ds_sviewt1 = np.transpose(mri_ds,[1,2,0])
         mri_vol_shape = np.shape(mri_ds_sviewt1)
         prev_slice_num = None
+        print(f"the number of slices is {mri_vol_shape}")
 
         while True:
             try:
-                user_input = input(f"Please enter a number between 0 and {mri_vol_shape[0] - 1} ('exit' to quit): ")
+                user_input = input(f"Please enter a number between 0 and {mri_vol_shape[2] - 1} ('exit' to quit): ")
                 if user_input.lower() == 'exit':
                     break
 
                 selected_slice = int(user_input)
-                if selected_slice < 0 or selected_slice >= mri_vol_shape[0]:
+                if selected_slice < 0 or selected_slice >= mri_vol_shape[2]:
                     continue
 
                 if selected_slice == prev_slice_num:
@@ -49,7 +51,7 @@ def sagittal_plot(mri_ds,mri_vol):
                 else:
                     plt.figure(1)
                     plt.title(f"Slice No: {selected_slice} sagittal view ")
-                    plt.imshow(mri_ds_sviewt1[int(selected_slice/4),:,:], cmap ='gray')
+                    plt.imshow(mri_ds_sviewt1[:,int(selected_slice)//2,:], cmap ='gray')
                     plt.show()
 
                 prev_slice_num = selected_slice
@@ -57,6 +59,25 @@ def sagittal_plot(mri_ds,mri_vol):
             except ValueError:
                 print("Invalid input. Please enter a valid number.")
         
+def view_test(mri_ds,mri_vol_shape,dimensions):
+    #setting the spatial coordinates of the voxels
+    x_axis = np.arange(mri_vol_shape[0]) * dimensions[0]
+    y_axis = np.arange(mri_vol_shape[1]) * dimensions[1]
+    z_axis = np.arange(mri_vol_shape[2]) * dimensions[2]
+    aspect_ratio = 1
+    print(f"the shape of mri_vol is {np.shape(mri_ds)}")
+    
+    # showing multiple plots   
+    plt.figure(1)
+    plt.title("Slice on 1st column")
+    plt.imshow(mri_ds[15,:,:], cmap ='gray')
+    plt.figure(2)
+    plt.title("Slice on 2nd column")
+    plt.imshow(mri_ds[:,15,:], cmap ='gray')
+    plt.figure(3)
+    plt.title("Slice on 3rd column")
+    plt.imshow(mri_ds[:,:,15], cmap ='gray') 
+
 
 
 def generate_grid(prostate_centroid):
@@ -129,6 +150,7 @@ def multiple_display(mri_data):
 
     # Create a figure with subplots for displaying the slices
     fig, axes = plt.subplots(4, 5, figsize=(15, 12))
+    
 
     # Iterate through and display the selected slices
     for i in range(num_slices_to_display):
@@ -185,38 +207,17 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         y_cent = int(prostate_centroid[0]/2)
 
         #plotting for the sagittal view 
-        # mri_ds_sviewt1 = np.transpose(mri_ds,[2,0,1])
-        # mri_ds_sviewt2 = np.transpose(mri_ds,[1,0,2])
-        # mri_vol_shape= np.shape(mri_vol)
-        # dimensions=[0.5,0.5,1]
-        sagittal_plot(mri_ds,mri_vol)
+        mri_ds_sviewt1 = np.transpose(mri_ds,[2,1,0])
+        mri_vol_shape= np.shape(mri_vol)
+        dimensions=[0.5,0.5,1]
+        view_test(mri_ds_sviewt1,mri_vol_shape,dimensions)
+        #multiple_display(mri_ds_sviewt1)
+        #sagittal_plot(mri_ds,mri_vol)
 
-        # #setting the spatial coordinates of the voxels
-        # x_axis = np.arange(mri_vol_shape[0]) * dimensions[0]
-        # y_axis = np.arange(mri_vol_shape[1]) * dimensions[1]
-        # z_axis = np.arange(mri_vol_shape[2]) * dimensions[2]
-        # aspect_ratio = 1
-        # print(f"the shape of mri_vol is {np.shape(mri_ds)}")
-        # showing the new plot  
-
-        # plt.figure(1)
-        # selected_slice = slice_select(mri_vol_shape[0])
-        # print (f"The selected slice is:{selected_slice}")
-        # plt.title(f"Slice No: {selected_slice} sagittal view ")
-        # plt.imshow(mri_ds_sviewt1[int(SLICE_NUM/2),:,:], cmap ='gray')
-
-        # plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
-        # print(f"the shape of mri_vol is {np.shape(mri_ds)}")
-        # plt.figure(2)
-        # plt.title("This is the 15th slice in the y axis but transposed using transpose [0,2,1]")
-        # plt.imshow(mri_ds_sviewt2[:,15,:], cmap ='gray')
-        # plt.figure(3)
-        # plt.title("This is the 15th slice in the x axis but transposed using transpose [2,0,1]")
-        # plt.imshow(mri_ds_sviewt1[15,:,:], cmap ='gray') 
 
         #the axial view 
         # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
-        plt.figure(2)
+        plt.figure(1)
         plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
         plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
         plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
@@ -225,9 +226,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
         plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
         plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
         plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
-        print(f"the shape of mri_vol is {np.shape(mri_ds)}")
-
-        #multiple_display(mri_ds_sviewt2)
+        # print(f"the shape of mri_vol is {np.shape(mri_ds)}")
         
         # ADDING labels to grid positions!!!
         first_x = np.min(np.where(grid == 1)[1])
