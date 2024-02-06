@@ -149,11 +149,12 @@ def multiple_display(mri_data):
     fig, axes = plt.subplots(4, 5, figsize=(15, 12))
     
 
+
     # Iterate through and display the selected slices
     for i in range(num_slices_to_display):
         slice_index = i * slice_spacing
         ax = axes[i // 5, i % 5]
-        ax.imshow(mri_data[:, slice_index, :], cmap='gray')
+        ax.imshow(mri_data[: :, slice_index], cmap='gray')
         ax.set_title(f"Slice {slice_index + 1}")
         ax.axis('off')
 
@@ -171,131 +172,123 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
 
     """
     while ((num_steps <= current_max_needle)):
-        # Obtain lesion and mri vols from data 
-        lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
-        totalreward = totalreward + reward 
+            # Obtain lesion and mri vols from data 
+            lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
+            totalreward = totalreward + reward 
 
-        mri_vol = vols['mri_vol']
-        prostate_vol = vols['prostate_mask']
-        prostate_centroid = np.mean(np.where(prostate_vol), axis = 1)
-        #print(f"Game rostate centroid : {prostate_centroid}")
-        SLICE_NUM = int(prostate_centroid[-1])
+            mri_vol = vols['mri_vol']
+            prostate_vol = vols['prostate_mask']
+            prostate_centroid = np.mean(np.where(prostate_vol), axis = 1)
+            #print(f"Game rostate centroid : {prostate_centroid}")
+            SLICE_NUM = int(prostate_centroid[-1])
 
-        # Define grid coords 
-        grid, grid_coords = generate_grid(prostate_centroid)
+            # Define grid coords 
+            grid, grid_coords = generate_grid(prostate_centroid)
 
-        # Obtain agents predicted actions 
-        actions,_ = agent.predict(obs)
-        #TODO : convert this to action / grid pos for agents!!! 
-    
-        #creating another subplot 
-        fig, axs = plt.subplots(1)
+            # Obtain agents predicted actions 
+            actions,_ = agent.predict(obs)
+            #TODO : convert this to action / grid pos for agents!!! 
 
-        #plotting for the axial view 
-        mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
-        mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
-        mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
-        mask_n_1= np.ma.array(obs[-2,:,:,:].numpy(), mask=(obs[-2,:,:,:].numpy()==0.0))
-        mask_n_2= np.ma.array(obs[-3,:,:,:].numpy(), mask=(obs[-3,:,:,:].numpy()==0.0))
-        mri_ds = mri_vol[::2,::2,::4]
-        needle = np.ma.array(grid, mask = (grid == 0.0))
-        #needle_ds = needle[::2,::2]
-        x_cent = int(prostate_centroid[1]/2)
-        y_cent = int(prostate_centroid[0]/2)
+            fig, axs = plt.subplots(1,2,figsize=(15,5))
+            mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
+            mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
+            mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
+            mask_n_1= np.ma.array(obs[-2,:,:,:].numpy(), mask=(obs[-2,:,:,:].numpy()==0.0))
+            mask_n_2= np.ma.array(obs[-3,:,:,:].numpy(), mask=(obs[-3,:,:,:].numpy()==0.0))
+            mri_ds = mri_vol[::2,::2,::4]
+            needle = np.ma.array(grid, mask = (grid == 0.0))
+            #needle_ds = needle[::2,::2]
+            x_cent = int(prostate_centroid[1]/2)
+            y_cent = int(prostate_centroid[0]/2)
 
-        #plotting for the sagittal view 
-        # mri_ds_sviewt1 = mri_ds
-        mri_ds_sviewt1 = np.transpose(mri_ds,[2,1,0])
-        mri_vol_shape= np.shape(mri_vol)
-        dimensions=[0.5,0.5,1]
-        view_test(mri_ds_sviewt1,mri_vol_shape,dimensions)
-        #multiple_display(mri_ds_sviewt1)
-        #sagittal_plot(mri_ds,mri_vol)
+            #Plotting for the second figure (sagittal view)
+            mri_ds_transposed = np.transpose(mri_ds,[2,1,0])
+            axs[0].set_title(f"sagittal view for {SLICE_NUM}")
+            axs[0].imshow(mri_ds_transposed[:,int(SLICE_NUM/2),:], cmap = 'grey')
+            axs[0].axis('off')
 
+            #Plotting for the axial view 
+            # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
+            axs[1].imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
+            axs[1].imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
+            axs[1].imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
+            axs[1].imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+            axs[1].imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
+            axs[1].imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
+            axs[1].imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
+            axs[1].imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
+            axs[0].axis('off')
 
-        #the axial view 
-        # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
-        # plt.figure(1)
-        # plt.imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
-        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
-        # plt.imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
-        # plt.imshow(np.max(mask_n_1[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        # plt.imshow(np.max(mask_n_2[:,:,:], axis =2),cmap='Wistia', alpha=0.4)
-        # plt.imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
-        # plt.imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
-        # plt.imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
-        # print(f"the shape of mri_vol is {np.shape(mri_ds)}")
-        
-        # ADDING labels to grid positions!!!
-        first_x = np.min(np.where(grid == 1)[1])
-        first_y = np.min(np.where(grid == 1)[0])
-        last_x = np.max(np.where(grid == 1)[1])
-        last_y = np.max(np.where(grid == 1)[0])
-        s = 'A  a  B  b  C  c  D  d  E  e  F  f  G' # fontsize 10.5 
-        #s = '-30 -25 -20 -15 -10 -5 0 5 10 15 20 25 30' #font size 8
-        plt.text(first_x, first_y - 5, s, fontsize = 10.5, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
-        grid_labels = np.arange(7, 0.5, -0.5)
-        #grid_labels = np.arange(-30, 35, 5)
-        for idx, label in enumerate(grid_labels):
-            plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
-            plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
+            # ADDING labels to grid positions!!!
+            first_x = np.min(np.where(grid == 1)[1])
+            first_y = np.min(np.where(grid == 1)[0])
+            last_x = np.max(np.where(grid == 1)[1])
+            last_y = np.max(np.where(grid == 1)[0])
+            s = 'A  a  B  b  C  c  D  d  E  e  F  f  G' # fontsize 10.5 
+            #s = '-30 -25 -20 -15 -10 -5 0 5 10 15 20 25 30' #font size 8
+            plt.text(first_x, first_y - 5, s, fontsize = 10.5, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
+            grid_labels = np.arange(7, 0.5, -0.5)
+            #grid_labels = np.arange(-30, 35, 5)
+            for idx, label in enumerate(grid_labels):
+                plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
+                plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
 
-        #Displays the rewards metrics within the game 
-        #The data comes from the library from the info dictionary within game dev
-        #checking for needle hit 
-        if data["needle_hit"] == True: hit='HIT'
-        else: hit='MISS'
-        plt.text(first_x - 18,first_y-14.5, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
-        plt.text((last_x*0.5), first_y-14.5, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
-        plt.text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
-        #print (f"The current lesion size is : {data['lesion_size']}")
+            #Displays the rewards metrics within the game 
+            #The data comes from the library from the info dictionary within game dev
+            #checking for needle hit 
+            if data["needle_hit"] == True: hit='HIT'
+            else: hit='MISS'
+            plt.text(first_x - 18,first_y-14.5, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
+            plt.text((last_x*0.5), first_y-14.5, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
+            plt.text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
+            #print (f"The current lesion size is : {data['lesion_size']}")
 
-        plt.axis('off')
+            plt.axis('off')
 
-        # Take input action (ie clicked position - original position), then scale
-        if num_steps == 0:
-            current_pos = np.array([0,0])
-        else:
-            current_pos = biopsy_env.get_current_pos()
+            # Take input action (ie clicked position - original position), then scale
+            if num_steps == 0:
+                current_pos = np.array([0,0])
+            else:
+                current_pos = biopsy_env.get_current_pos()
 
 
-        # Convert agent actions -> positions to choose 
-        suggested_pos = round_to_05((actions[0:-1] * 10) + current_pos)
-        #my_pos = round_to_05((taken_actions[0:-1]*10) + current_pos)
+            # Convert agent actions -> positions to choose 
+            suggested_pos = round_to_05((actions[0:-1] * 10) + current_pos)
+            #my_pos = round_to_05((taken_actions[0:-1]*10) + current_pos)
 
-        # Convert predicted actions to grid pos (A, E)
-        x_dict = ['A', 'a', 'B', 'b', 'C', 'c', 'D', 'd', 'E', 'e', 'F', 'f', 'G']
-        grid_vals = np.arange(-30,35, 5)
-        x_idx = x_dict[(np.where(grid_vals == suggested_pos[0]))[0][0]]
+            # Convert predicted actions to grid pos (A, E)
+            x_dict = ['A', 'a', 'B', 'b', 'C', 'c', 'D', 'd', 'E', 'e', 'F', 'f', 'G']
+            grid_vals = np.arange(-30,35, 5)
+            x_idx = x_dict[(np.where(grid_vals == suggested_pos[0]))[0][0]]
 
-        y_dict = [str(num) for num in np.arange(7, 0.5, -0.5)]
-        y_idx = y_dict[(np.where(grid_vals == suggested_pos[1]))[0][0]]
+            y_dict = [str(num) for num in np.arange(7, 0.5, -0.5)]
+            y_idx = y_dict[(np.where(grid_vals == suggested_pos[1]))[0][0]]
 
-        suggested_str = 'Suggested GRID POSITION: [' + x_idx + ',' + y_idx + ']'
-        plt.text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
-        # End of all the plots and figures so show them here 
-        plt.show()
+            suggested_str = 'Suggested GRID POSITION: [' + x_idx + ',' + y_idx + ']'
+            plt.text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
 
-        ### 4. Take in user actions to implement strategy ###
-        grid_pos = plt.ginput(1,0) #0,0)     
-        #grid_pos = round_to_05(np.array(grid_pos[0]))
-        prostate_cent_xy = np.array([prostate_centroid[1], prostate_centroid[0]])/2
-        grid_pos -= ((prostate_cent_xy))
 
-        raw_actions = np.round(grid_pos - current_pos)
-        taken_actions = round_to_05(np.round(grid_pos - current_pos))
 
-        taken_actions = taken_actions / 10 # normalise between (-1,1)  
-        #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
-        taken_actions = np.append(taken_actions, ([1]))                                                                                         
+            ### 4. Take in user actions to implement strategy ###
+            grid_pos = plt.ginput(1,0) #0,0)     
+            #grid_pos = round_to_05(np.array(grid_pos[0]))
+            prostate_cent_xy = np.array([prostate_centroid[1], prostate_centroid[0]])/2
+            grid_pos -= ((prostate_cent_xy))
 
-        # Take step in environment 
-        obs, reward, done, data = biopsy_env.step(taken_actions)
+            raw_actions = np.round(grid_pos - current_pos)
+            taken_actions = round_to_05(np.round(grid_pos - current_pos))
 
-        #print(f"Current pos : {current_pos}Agent suggested actions : {actions} our actions : {taken_actions} \n Done :{done} num_steps {num_steps}")
-        num_steps += 1
+            taken_actions = taken_actions / 10 # normalise between (-1,1)  
+            #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
+            taken_actions = np.append(taken_actions, ([1]))                                                                                         
 
-        plt.close()
+            # Take step in environment 
+            obs, reward, done, data = biopsy_env.step(taken_actions)
+
+            #print(f"Current pos : {current_pos}Agent suggested actions : {actions} our actions : {taken_actions} \n Done :{done} num_steps {num_steps}")
+            num_steps += 1
+
+            plt.close()
 
     return obs,reward,data,totalreward
 
