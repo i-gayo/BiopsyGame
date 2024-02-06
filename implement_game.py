@@ -204,7 +204,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             #Plotting for the second figure (sagittal view)
             mri_ds_transposed = np.transpose(mri_ds,[2,1,0])
             axs[0].set_title(f"sagittal view for {SLICE_NUM}")
-            axs[0].imshow(mri_ds_transposed[:,int(SLICE_NUM/2),:], cmap = 'grey')
+            axs[0].imshow(mri_ds_transposed[:,int(SLICE_NUM/2),:], cmap = 'grey',aspect = 2)
             axs[0].axis('off')
 
             #Plotting for the axial view 
@@ -281,7 +281,14 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             taken_actions = taken_actions / 10 # normalise between (-1,1)  
             #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
             taken_actions = np.append(taken_actions, ([1]))                                                                                         
-
+            
+            #Finding the new sagittal slice_number
+            #assuming that the first column of the grid position (x coord) is the slice index
+            sag_index = data['current_pos']
+            #checking if the index is in the valid range 
+            #sag_index = np.clip(sag_index,0,mri_ds_transposed.shape[1]-1)
+            print(f"the values in sag_index are :{sag_index}")
+            
             # Take step in environment 
             obs, reward, done, data = biopsy_env.step(taken_actions)
 

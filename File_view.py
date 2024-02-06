@@ -1,4 +1,4 @@
-import matplotlib.pylab as plt 
+from matplotlib import pyplot as plt 
 import SimpleITK as sitk
 import numpy as np
 from pathlib import Path
@@ -41,14 +41,68 @@ def load_and_display_nifti(file_path):
     print(img_size)
     # Display slices using matplotlib
     # num_slices = mri_data.shape[-1]
-    transposed_image= np.transpose(mri_data,[1,2,0])
-    plt.imshow(transposed_image[:,:,45], cmap='gray')
+    # transposed_image= np.transpose(mri_data)
+    vox_dims = [0.5, 0.5, 1]
+    transposed_image= (mri_data)
+    sliceno=45
+    print (img_size)
+    plt.title("This is slice 45")
+    plt.figure(1)
+    plt.imshow(mri_data[:,:,sliceno], cmap='gray') 
+    plt.figure(2)
+    plt.title("This is slice on the first one ")
+    plt.imshow(mri_data[int(sliceno),:,:], cmap='gray') 
+
+    # plt.imshow(transposed_image[:,45,:], cmap='gray',aspect=vox_dims[2]/vox_dims[0])
+    plt.show()
+    return mri_img
+    # ax = plt.gca().set_aspect(1/np.array(vox_dims[1],vox_dims[2],vox_dims[3]))
+
+def multiple_display(file_path):
+    # Load NIfTI file
+    mri_img = sitk.ReadImage(str(file_path))
+    mri_data = sitk.GetArrayFromImage(mri_img)
+    mri_data = np.squeeze(mri_data)
+
+    #CODE TO SHOW MULTIPLE SLICES AT ONCE
+    # Determine the number of slices to display (e.g., 20 slices)
+    num_slices_to_display = 20
+
+    # Calculate the spacing between the slices
+    num_slices_total = mri_data.shape[0]
+    slice_spacing = max(1, num_slices_total // num_slices_to_display)
+
+    # Create a figure with subplots for displaying the slices
+    fig, axes = plt.subplots(4, 5, figsize=(15, 12))
+
+    # Iterate through and display the selected slices
+    for i in range(num_slices_to_display):
+        slice_index = i * slice_spacing
+        ax = axes[i // 5, i % 5]
+        ax.imshow(mri_data[:, slice_index, :], cmap='gray')
+        ax.set_title(f"Slice {slice_index + 1}")
+        ax.axis('off')
+
+    # Adjust spacing between subplots
+    plt.tight_layout()
+
+    # Show the plot
+    plt.show()
     plt.text(20, 20, 'matplotlib EXAMPLE',color = 'green', horizontalalignment='center',verticalalignment='center')
     plt.show()
+    return mri_img
+
 
 if __name__ == "__main__":
     # code for single file
-    file_path = r"BiopsyGame\Data\ProstateDataset\lesion\Patient005876472_study_0.nii.gz"
+    file_path = r"Data\ProstateDataset\t2w\Patient688976372_study_0.nii.gz"
+    # mri_image=load_and_display_nifti(file_path)
+    # shape=np.shape(mri_image)
+    # slices=mri_image.GetSpacing()
+    # dimensions=mri_image.GetDimension()
+    # print (f'The shape of this image is {shape}')
+    # print(f"the voxel size is {slices}")
+    # print(f'the pixel dimension of the mri image is {dimensions}')
     load_and_display_nifti(file_path)
 
 
