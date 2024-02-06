@@ -171,6 +171,8 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
     Responsible for generating the graph but also taking into account the maximum number of needles required
 
     """
+    #initialising variable 
+    sag_index = 0
     while ((num_steps <= current_max_needle)):
             # Obtain lesion and mri vols from data 
             lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
@@ -203,10 +205,29 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
 
             #Plotting for the second figure (sagittal view)
             mri_ds_transposed = np.transpose(mri_ds,[2,1,0])
-            axs[0].set_title(f"sagittal view for {SLICE_NUM}")
-            axs[0].imshow(mri_ds_transposed[:,int(SLICE_NUM/2),:], cmap = 'grey',aspect = 2)
-            axs[0].axis('off')
+            img_dims = [0.5,0.5,1]
+            vox_dims = np.shape(mri_ds_transposed)
+            # Compute actual spatial coordinates of the voxels:
+            x_axis = np.arange(img_dims[0]) * vox_dims[0]
+            y_axis = np.arange(img_dims[1]) * vox_dims[1]
+            z_axis = np.arange(img_dims[2]) * vox_dims[2]
 
+            #setting the horizontal and vertical axis 
+            hor_axis = y_axis
+            ver_axis = z_axis
+
+            # new_img_dim = np.transpose(img_dims,[2,1,0])
+            #Updating via actions 
+            # axs[0].set_title(f"sagittal view for {sag_index}"))
+            # axs[0].imshow(mri_ds_transposed[:,sag_index,:], cmap = 'grey',aspect = 2)
+            # axs[0].axis('off')
+
+            #static plot 
+            print(f"The shape of mri_ds_transposed is:{np.shape(mri_ds_transposed)}")
+            # Setting the aspect ratio via the shape
+            axs[0].imshow(mri_ds_transposed[:,int(SLICE_NUM/2),:], cmap = 'grey',aspect = 0.5)
+            # axs[0].imshow(mri_ds_transposed[:,int(SLICE_NUM/2),:], cmap = 'grey')
+            
             #Plotting for the axial view 
             # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
             axs[1].imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
@@ -285,6 +306,8 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             #Finding the new sagittal slice_number
             #assuming that the first column of the grid position (x coord) is the slice index
             sag_index = data['current_pos']
+            #taking only the y value of sag_index as that is what is being plotted
+            sag_index = sag_index[1]
             #checking if the index is in the valid range 
             #sag_index = np.clip(sag_index,0,mri_ds_transposed.shape[1]-1)
             print(f"the values in sag_index are :{sag_index}")
