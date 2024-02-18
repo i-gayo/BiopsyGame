@@ -1,3 +1,5 @@
+from colorama import Fore, Back, Style
+
 import numpy as np
 import SimpleITK as sitk
 from matplotlib import pyplot as plt 
@@ -137,6 +139,8 @@ def generate_grid_old(prostate_centroid):
     return grid, grid_coords
 
 def multiple_display(mri_data):
+
+
     #CODE TO SHOW MULTIPLE SLICES AT ONCE
     # Determine the number of slices to display (e.g., 20 slices)
     num_slices_to_display = 20
@@ -154,7 +158,9 @@ def multiple_display(mri_data):
     for i in range(num_slices_to_display):
         slice_index = i * slice_spacing
         ax = axes[i // 5, i % 5]
-        ax.imshow(mri_data[: :, slice_index], cmap='gray')
+        index = mri_data[:,slice_index, :]
+        flipped_index = np.fliplr(index)
+        ax.imshow(flipped_index, cmap='gray',aspect= 0.5)
         ax.set_title(f"Slice {slice_index + 1}")
         ax.axis('off')
 
@@ -165,6 +171,35 @@ def multiple_display(mri_data):
     plt.show()
     plt.text(20, 20, 'matplotlib EXAMPLE',color = 'green', horizontalalignment='center',verticalalignment='center')
     plt.show()
+
+def coord_converter(coordinates,prostate_centroid):
+
+    """
+    Converts the coordinates from the grid to the image coordinates
+    
+    Arguments:
+    :coordinates (ndarray) : 3 x 1 array of grid coordinates 
+    
+    Returns:
+    :image_coords (ndarray) : 3 x 1 array of image coordinates 
+    """
+    # Convert to image coordinates 
+    #Converts range from (-30,30) to image grid array
+    print(Fore.RED + 'WITHIN THE FUNCTION' + Fore.RESET)
+    print (coordinates)
+    # x_idx = coordinates[0]
+    # y_idx = coordinates[1]
+
+    # #Converts range from (-30,30) to image grid array
+    # # before : add +50 to each x and y position
+    
+    # x_idx = (x_idx) + round(prostate_centroid[0]/2)
+    # y_idx = (y_idx) + round(prostate_centroid[1]/2)
+
+    # x_grid_pos = round(x_idx)
+    # y_grid_pos = round(y_idx)
+    
+    # return x_grid_pos, y_grid_pos
 
 def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data):
     """
@@ -204,32 +239,25 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             y_cent = int(prostate_centroid[0]/2)
 
             #Plotting for the second figure (sagittal view)
-            mri_ds_transposed = np.transpose(mri_ds,[2,1,0])
-            img_dims = [0.5,0.5,1]
-            vox_dims = np.shape(mri_ds_transposed)
+            img_dims = [1,0.5,0.5]
             # Compute actual spatial coordinates of the voxels:
-            x_axis = np.arange(img_dims[0]) * vox_dims[0]
-            y_axis = np.arange(img_dims[1]) * vox_dims[1]
-            z_axis = np.arange(img_dims[2]) * vox_dims[2]
+            # x_axis = np.arange(img_dims[0]) * vox_dims[0]
+            # y_axis = np.arange(img_dims[1]) * vox_dims[1]
+            # z_axis = np.arange(img_dims[2]) * vox_dims[2]
 
-            #setting the horizontal and vertical axis 
-            hor_axis = y_axis
-            ver_axis = z_axis
-
-            # new_img_dim = np.transpose(img_dims,[2,1,0])
-            #Updating via actions 
-            # axs[0].set_title(f"sagittal view for {sag_index}"))
-            # axs[0].imshow(mri_ds_transposed[:,sag_index,:], cmap = 'grey',aspect = 2)
+            # Plot of the sagittal view which updates at each iteration
+            #attempting to flip the view 
+            axs[0].set_title(f"sagittal view for {sag_index}")
             # axs[0].axis('off')
+            index = mri_vol[:,50,:]
+            flipped_index = np.fliplr(index)
+            axs[0].imshow(flipped_index, cmap = 'grey',aspect = 0.5)
+            # print (Fore.GREEN + f"VOLUME SHAPEEEEEE {np.shape(mri_vol)}" + Fore.RESET)
+            # plt.show(multiple_display(mri_vol))
 
-            #static plot 
-            print(f"The shape of mri_ds_transposed is:{np.shape(mri_ds_transposed)}")
-            # Setting the aspect ratio via the shape
-            axs[0].imshow(mri_ds_transposed[:,int(SLICE_NUM/2),:], cmap = 'grey',aspect = 0.5)
-            # axs[0].imshow(mri_ds_transposed[:,int(SLICE_NUM/2),:], cmap = 'grey')
             
             #Plotting for the axial view 
-            # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
+            crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
             axs[1].imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
             axs[1].imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
             axs[1].imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
@@ -305,12 +333,15 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             
             #Finding the new sagittal slice_number
             #assuming that the first column of the grid position (x coord) is the slice index
-            sag_index = data['current_pos']
+            grid_index = data['current_pos']
             #taking only the y value of sag_index as that is what is being plotted
-            sag_index = sag_index[1]
-            #checking if the index is in the valid range 
-            #sag_index = np.clip(sag_index,0,mri_ds_transposed.shape[1]-1)
-            print(f"the values in sag_index are :{sag_index}")
+            sag_index = coord_converter(grid_index,prostate_centroid)[0]
+
+            print(sag_index)
+            
+            print(Fore.GREEN + f"the values in sag_index are: {sag_index}" + Fore.RESET)
+            #using obtain volume coordinates 
+            
             
             # Take step in environment 
             obs, reward, done, data = biopsy_env.step(taken_actions)
