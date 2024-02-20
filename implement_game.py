@@ -240,7 +240,7 @@ def coord_converter(coordinates,prostate_centroid):
     
     return x_grid_pos, y_grid_pos
 
-def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,):
+def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,):
     """
     Responsible for generating the graph but also taking into account the maximum number of needles required
 
@@ -248,7 +248,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
     #initialising variable 
     sag_index = 0
     depth = 0
-    while ((num_steps <= current_max_needle)):
+    while ((num_steps <= 4)):
             # Obtain lesion and mri vols from data 
             lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
             totalreward = totalreward + reward 
@@ -353,7 +353,11 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             # test = (prostate_centroid[2])*0.25
            
             axs[2].imshow(mri_ds[:,:,int(depth)], cmap ='gray')
-            axs[2].imshow(prostate_vol[:,:,int(depth)], cmap = 'coolwarm_r', alpha = 0.5)
+            # Add code to create the mask for the prostate and the needle
+            # prostate_mask = np.ma.array(prostate_vol[:,:,int(depth)], mask=(prostate_vol[:,:,int(depth)]==0.0))
+            # # needle_mask = np.ma.array(needle[:,:,int(depth)], mask=(needle[:,:,int(depth)]==0.0))
+            # axs[2].imshow(prostate_mask, cmap='coolwarm_r', alpha=0.5)
+            # # axs[2].imshow(needle_mask, cmap='jet', alpha=0.5)
             axs[2].set_title(f" Depth showing axial view ")
             axs[2].axis('off')
             plt.axis('off')
@@ -449,20 +453,7 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
         hit=""
         current_patient=biopsy_env.get_info()
         
-        if current_patient['lesion_size']<=750:
-            obs,reward,data,totalreward=plotter(3,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
-            print("Threshold a ")
-        elif current_patient['lesion_size']>=751 and current_patient['lesion_size']<=1000 :
-            obs,reward,data,totalreward=plotter(4,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
-            print("Threshold b ")
-        elif current_patient['lesion_size']>=1001 and current_patient['lesion_size']<=2000 :
-            obs,reward,data,totalreward=plotter(5,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
-            print("Threshold c ")
-        elif current_patient['lesion_size']>=2001 and current_patient['lesion_size']<=20000:
-            obs,reward,data,totalreward=plotter(6,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
-            print("Threshold d ")
-        else:
-            print("Check again for lesion size (ERROR) everything should have been accounted for ")
+        plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
 
 if __name__ == '__main__':
     
