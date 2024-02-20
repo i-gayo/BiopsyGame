@@ -172,6 +172,39 @@ def multiple_display(mri_data):
     plt.text(20, 20, 'matplotlib EXAMPLE',color = 'green', horizontalalignment='center',verticalalignment='center')
     plt.show()
 
+def select_depth_action(prostate_mask, prostate_centroid):
+    """
+    Prompts the user to select a depth action and returns the z-coordinate for the selected action.
+
+    Arguments:
+    :prostate_vol: The volume of the prostate, a 3D numpy array where the prostate is segmented.
+
+    Returns:
+    :z_coordinate: The z-coordinate for the apex, centroid, or base of the prostate based on the user's choice.
+    """
+    # Get the z-coordinates for the prostate
+    # coordinates = get_prostate_z_coordinate(prostate_mask, prostate_centroid)
+
+    # Prompt the user for a depth action
+    action = int(input("Select a depth action (0: Apex, 1: Centroid, 2: Base): "))
+
+    # Return the appropriate z-coordinate
+    if action == 0:
+        print ("Action 0 selected")
+        depth = np.min(np.where(prostate_mask == 1)[-1])
+    elif action == 1:
+        print ("Action 1 selected")
+        depth = prostate_centroid[2]
+        # return coordinates['centroid']
+    elif action == 2:
+        print ("action 2 selected")
+        depth = np.max(np.where(prostate_mask == 1)[-1])
+        # return coordinates['base']
+    else:
+        raise ValueError("Invalid action selected.")
+    print (Fore.MAGENTA + f"DEPTH SELECTED {depth}" + Fore.RESET)
+    return depth
+
 def coord_converter(coordinates,prostate_centroid):
 
     """
@@ -187,27 +220,34 @@ def coord_converter(coordinates,prostate_centroid):
     #Converts range from (-30,30) to image grid array
     print(Fore.RED + 'WITHIN THE FUNCTION' + Fore.RESET)
     print (coordinates)
-    # x_idx = coordinates[0]
-    # y_idx = coordinates[1]
+    x_idx = coordinates[0]
+    y_idx = coordinates[1]
 
-    # #Converts range from (-30,30) to image grid array
-    # # before : add +50 to each x and y position
+    #Converts range from (-30,30) to image grid array
     
-    # x_idx = (x_idx) + round(prostate_centroid[0]/2)
-    # y_idx = (y_idx) + round(prostate_centroid[1]/2)
+    x_idx = (x_idx)*2 + round(prostate_centroid[0])
+    y_idx = (y_idx)*2 + round(prostate_centroid[1])
 
-    # x_grid_pos = round(x_idx)
-    # y_grid_pos = round(y_idx)
+    #alternative method 
+    # x_idx = (x_idx) + round(self.prostate_centroid[0]/2)
+    # y_idx = (y_idx) + round(self.prostate_centroid[1]/2)
+
+
+    x_grid_pos = round(x_idx)
+    y_grid_pos = round(y_idx)
+
+    print(Fore.BLUE + f"X GRID POS {x_grid_pos} Y GRID POS {y_grid_pos}" + Fore.RESET)
     
-    # return x_grid_pos, y_grid_pos
+    return x_grid_pos, y_grid_pos
 
-def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data):
+def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,):
     """
     Responsible for generating the graph but also taking into account the maximum number of needles required
 
     """
     #initialising variable 
     sag_index = 0
+    depth = 0
     while ((num_steps <= current_max_needle)):
             # Obtain lesion and mri vols from data 
             lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
@@ -216,6 +256,8 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             mri_vol = vols['mri_vol']
             prostate_vol = vols['prostate_mask']
             prostate_centroid = np.mean(np.where(prostate_vol), axis = 1)
+            print(Fore.YELLOW + f" PROSTATE CENTROIDS {prostate_centroid}" + Fore.RESET)
+            print(Fore.YELLOW + f" SHAPE {np.shape(prostate_centroid)}" + Fore.RESET)
             #print(f"Game rostate centroid : {prostate_centroid}")
             SLICE_NUM = int(prostate_centroid[-1])
 
@@ -226,7 +268,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             actions,_ = agent.predict(obs)
             #TODO : convert this to action / grid pos for agents!!! 
 
-            fig, axs = plt.subplots(1,2,figsize=(15,5))
+            fig, axs = plt.subplots(1,3,figsize=(15,5))
             mask_l = np.ma.array(obs[0,:,:,:].numpy(), mask=(obs[0,:,:,:].numpy()==0.0))
             mask_p = np.ma.array(obs[1,:,:,:].numpy(), mask=(obs[1,:,:,:].numpy()==0.0))
             mask_n= np.ma.array(obs[-1,:,:,:].numpy(), mask=(obs[-1,:,:,:].numpy()==0.0))
@@ -247,17 +289,23 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
 
             # Plot of the sagittal view which updates at each iteration
             #attempting to flip the view 
-            axs[0].set_title(f"sagittal view for {sag_index}")
-            # axs[0].axis('off')
-            index = mri_vol[:,50,:]
+            index = mri_vol[:,sag_index,:]
+            index_ds = mri_ds[:,int(sag_index/4),:] 
             flipped_index = np.fliplr(index)
+            flipped_index_ds = np.fliplr(index_ds)
             axs[0].imshow(flipped_index, cmap = 'grey',aspect = 0.5)
-            # print (Fore.GREEN + f"VOLUME SHAPEEEEEE {np.shape(mri_vol)}" + Fore.RESET)
+            # axs[0].imshow(prostate_vol[:,50,:], cmap = 'coolwarm_r', alpha = 0.5)
+            # axs[0].imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
+            # axs[0].imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
+            print (Fore.GREEN + f"VOLUME SHAPEEEEEE {np.shape(mri_vol)}" + Fore.RESET)
             # plt.show(multiple_display(mri_vol))
-
-            
+            axs[0].set_title(f"sagittal view for {sag_index}")
+            axs[0].axis('off')
+            # axs[0].axis('off')
+            # axs[2].imshow(flipped_index_ds, cmap = 'grey',aspect = 0.25)
+    
             #Plotting for the axial view 
-            crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
+            # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
             axs[1].imshow(mri_ds[:,:, int(SLICE_NUM/4)], cmap ='gray')
             axs[1].imshow(50*needle[:,:], cmap='jet', alpha = 0.5)
             axs[1].imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
@@ -266,7 +314,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             axs[1].imshow(50*needle[:,:], cmap='jet', alpha = 0.3)
             axs[1].imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
             axs[1].imshow(np.max(mask_n[:,:,:], axis =2),cmap='Wistia', alpha=0.5)
-            axs[0].axis('off')
+            axs[1].axis('off')
 
             # ADDING labels to grid positions!!!
             first_x = np.min(np.where(grid == 1)[1])
@@ -275,23 +323,39 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             last_y = np.max(np.where(grid == 1)[0])
             s = 'A  a  B  b  C  c  D  d  E  e  F  f  G' # fontsize 10.5 
             #s = '-30 -25 -20 -15 -10 -5 0 5 10 15 20 25 30' #font size 8
-            plt.text(first_x, first_y - 5, s, fontsize = 10.5, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
+            axs[1].text(first_x, first_y - 5, s, fontsize = 10.5, color = 'aqua', bbox=dict(fill=False, edgecolor='green', linewidth=1))#, transform= axs.transAxes)
             grid_labels = np.arange(7, 0.5, -0.5)
             #grid_labels = np.arange(-30, 35, 5)
             for idx, label in enumerate(grid_labels):
-                plt.text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
-                plt.text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
+                axs[1].text(first_x-10, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
+                axs[1].text(last_x+5, first_y + (idx*5.15), label, fontsize = 10.5, color = 'aqua')
 
             #Displays the rewards metrics within the game 
             #The data comes from the library from the info dictionary within game dev
             #checking for needle hit 
             if data["needle_hit"] == True: hit='HIT'
             else: hit='MISS'
-            plt.text(first_x - 18,first_y-14.5, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
-            plt.text((last_x*0.5), first_y-14.5, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
-            plt.text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
+            axs[1].text(first_x - 18,first_y-14.5, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
+            axs[1].text((last_x*0.5), first_y-14.5, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
+            axs[1].text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
             #print (f"The current lesion size is : {data['lesion_size']}")
 
+
+            # #Plotting for the prostate centroid view
+            # lesion_index= mri_vol[:,int(prostate_centroid[1]),:]
+            # flipped_centre = np.fliplr(lesion_index)
+            # axs[2].imshow(flipped_centre, cmap = 'gray',aspect = 0.5)
+            # axs[2].set_title(f"Lesion view for the prostate centroid {prostate_centroid[1]}")
+            
+            #plotting for the axial view with the depth action 
+            depth = select_depth_action(prostate_vol,prostate_centroid)
+            depth = depth/4
+            # test = (prostate_centroid[2])*0.25
+           
+            axs[2].imshow(mri_ds[:,:,int(depth)], cmap ='gray')
+            axs[2].imshow(prostate_vol[:,:,int(depth)], cmap = 'coolwarm_r', alpha = 0.5)
+            axs[2].set_title(f" Depth showing axial view ")
+            axs[2].axis('off')
             plt.axis('off')
 
             # Take input action (ie clicked position - original position), then scale
@@ -314,8 +378,7 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
             y_idx = y_dict[(np.where(grid_vals == suggested_pos[1]))[0][0]]
 
             suggested_str = 'Suggested GRID POSITION: [' + x_idx + ',' + y_idx + ']'
-            plt.text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
-
+            axs[1].text(first_x-10, last_y + 10, suggested_str, fontsize = 12, color = 'magenta')
 
 
             ### 4. Take in user actions to implement strategy ###
@@ -329,16 +392,16 @@ def plotter(current_max_needle,reward,totalreward,obs,vols,done,num_steps,hit,bi
 
             taken_actions = taken_actions / 10 # normalise between (-1,1)  
             #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
-            taken_actions = np.append(taken_actions, ([1]))                                                                                         
+            taken_actions = np.append(taken_actions, ([1]))     
+            
+            # depth = select_depth_action(prostate_vol, prostate_centroid)                                                                                    
             
             #Finding the new sagittal slice_number
             #assuming that the first column of the grid position (x coord) is the slice index
             grid_index = data['current_pos']
             #taking only the y value of sag_index as that is what is being plotted
-            sag_index = coord_converter(grid_index,prostate_centroid)[0]
-
-            print(sag_index)
-            
+            sag_index = coord_converter(grid_index,prostate_centroid)
+            sag_index = sag_index[0]
             print(Fore.GREEN + f"the values in sag_index are: {sag_index}" + Fore.RESET)
             #using obtain volume coordinates 
             
@@ -368,6 +431,8 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
     data=biopsy_env.get_info()
     reward=0
     totalreward=0
+    image_data = biopsy_env.get_img_data()
+    
     
     # Load agent
     policy_kwargs = dict(features_extractor_class = NewFeatureExtractor, features_extractor_kwargs=dict(multiple_frames = True, num_channels = 5))
@@ -383,9 +448,6 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
         num_steps = 0 
         hit=""
         current_patient=biopsy_env.get_info()
-        #checking for lesion size of the next patient
-
-        print(current_patient['lesion_size'])
         
         if current_patient['lesion_size']<=750:
             obs,reward,data,totalreward=plotter(3,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)

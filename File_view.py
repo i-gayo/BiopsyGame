@@ -103,7 +103,18 @@ if __name__ == "__main__":
     # print (f'The shape of this image is {shape}')
     # print(f"the voxel size is {slices}")
     # print(f'the pixel dimension of the mri image is {dimensions}')
-    load_and_display_nifti(file_path)
+    image=load_and_display_nifti(file_path)
+    # Get the direction matrix
+    direction_matrix = image.GetDirection()
+
+    # Extract directions for x, y, and z axes
+    x_direction = direction_matrix[0:3]
+    y_direction = direction_matrix[3:6]
+    z_direction = direction_matrix[6:9]
+
+    print("X axis direction:", x_direction)
+    print("Y axis direction:", y_direction)
+    print("Z axis direction:", z_direction)
 
 
     # #code for viewing the entire folder 
