@@ -9,58 +9,6 @@ from Envs.biopsy_env import *
 from stable_baselines3 import PPO
 from stable_baselines3.ppo.policies import CnnPolicy
 
-def slice_select(slice_num):
-    """
-    Prompts the user to slect a slice to view 
-    
-    Arguements:
-    slice_num (int): The total number of slices available in the targeted view
-    
-    Returns:
-    selected_slice: (int) : The selected slice number."""
-    while True:
-        try:
-            selected_slice= int(input(f"Enter the slice number to view from the range (0-{slice_num-1}) : "))
-            if 0 <= selected_slice < slice_num:
-                return selected_slice
-            else:
-                print(f"Please enter a number between 0 and {slice_num-1}.")
-        except ValueError:
-            print("Invalid input. Please enter a number.")
-
-def sagittal_plot(mri_ds,mri_vol_shape):
-        """
-        Generates a plot of the sagittal view continously generating plots when a new input is 
-        """
-        mri_ds_sviewt1= mri_ds
-        mri_ds_sviewt1 = np.transpose(mri_ds,[1,2,0])
-        mri_vol_shape = np.shape(mri_ds_sviewt1)
-        prev_slice_num = None
-        print(f"the number of slices is {mri_vol_shape}")
-
-        while True:
-            try:
-                user_input = input(f"Please enter a number between 0 and {mri_vol_shape[2] - 1} ('exit' to quit): ")
-                if user_input.lower() == 'exit':
-                    break
-
-                selected_slice = int(user_input)
-                if selected_slice < 0 or selected_slice >= mri_vol_shape[2]:
-                    continue
-
-                if selected_slice == prev_slice_num:
-                    print("You've selected the same slice. Displaying again.")
-                else:
-                    plt.figure(1)
-                    plt.title(f"Slice No: {selected_slice} sagittal view ")
-                    plt.imshow(mri_ds_sviewt1[:,int(selected_slice)//2,:], cmap ='gray')
-                    plt.show()
-
-                prev_slice_num = selected_slice
-
-            except ValueError:
-                print("Invalid input. Please enter a valid number.")
-        
 def view_test(mri_ds,mri_vol_shape,dimensions):
     #setting the spatial coordinates of the voxels
     x_axis = np.arange(mri_vol_shape[0]) * dimensions[0]
@@ -86,7 +34,7 @@ def generate_grid(prostate_centroid):
         
         Arguments:
         :prostate_centroid (ndarray) : centroid in x,y,z convention of prostate gland 
-        
+         
         Returns:
         :grid_coords (ndarray) : 2 x 169 grid coords x,y convention 
         """
@@ -173,6 +121,8 @@ def multiple_display(mri_data):
     plt.show()
 
 def select_depth_action(prostate_mask, prostate_centroid):
+
+    
     """
     Prompts the user to select a depth action and returns the z-coordinate for the selected action.
 
@@ -216,6 +166,9 @@ def coord_converter(coordinates,prostate_centroid):
     Returns:
     :image_coords (ndarray) : 3 x 1 array of image coordinates 
     """
+    #code can either be taken from create needle_vol
+    #or use method from _obtain_volume_coords
+
     # Convert to image coordinates 
     #Converts range from (-30,30) to image grid array
     print(Fore.RED + 'WITHIN THE FUNCTION' + Fore.RESET)
@@ -228,17 +181,30 @@ def coord_converter(coordinates,prostate_centroid):
     x_idx = (x_idx)*2 + round(prostate_centroid[0])
     y_idx = (y_idx)*2 + round(prostate_centroid[1])
 
-    #alternative method 
-    # x_idx = (x_idx) + round(self.prostate_centroid[0]/2)
-    # y_idx = (y_idx) + round(self.prostate_centroid[1]/2)
-
-
     x_grid_pos = round(x_idx)
     y_grid_pos = round(y_idx)
 
     print(Fore.BLUE + f"X GRID POS {x_grid_pos} Y GRID POS {y_grid_pos}" + Fore.RESET)
     
     return x_grid_pos, y_grid_pos
+
+def coord_converter_alt(coordinates,prostate_centroid,mri_shape):
+    #Initialise coordinates to be 0,0,0 at top left corner of img volume 
+      y_vals = np.asarray(range(mri_shape[0])).astype(float) 
+      x_vals = np.asarray(range(mri_shape[1])).astype(float) 
+      z_vals = np.asarray(range(mri_shape[2])).astype(float) 
+
+      x,y,z = np.meshgrid(x_vals,y_vals, z_vals)
+
+      #Centre coordinates at rectum position
+      x-= prostate_centroid[0]
+      y-= prostate_centroid[1]
+      z-= prostate_centroid[2]
+
+      # Convert to 0.5 x 0.5 x 1mm dimensions 
+      img_coords = [x*0.5,y*0.5,z]
+
+      return img_coords
 
 def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,):
     """
@@ -255,6 +221,7 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
 
             mri_vol = vols['mri_vol']
             prostate_vol = vols['prostate_mask']
+            tumour_vol = vols['tumour_mask']
             prostate_centroid = np.mean(np.where(prostate_vol), axis = 1)
             print(Fore.YELLOW + f" PROSTATE CENTROIDS {prostate_centroid}" + Fore.RESET)
             print(Fore.YELLOW + f" SHAPE {np.shape(prostate_centroid)}" + Fore.RESET)
@@ -335,13 +302,12 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             #checking for needle hit 
             if data["needle_hit"] == True: hit='HIT'
             else: hit='MISS'
-            axs[1].text(first_x - 18,first_y-14.5, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
-            axs[1].text((last_x*0.5), first_y-14.5, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
-            axs[1].text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 10.5,color = 'salmon')
+            axs[1].text(first_x - 15,first_y-14.5, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
+            axs[1].text((last_x*0.48), first_y-14.5, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
+            axs[1].text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 12.5,color = 'cyan')
             #print (f"The current lesion size is : {data['lesion_size']}")
 
-
-            # #Plotting for the prostate centroid view
+            #Plotting for the prostate centroid view
             # lesion_index= mri_vol[:,int(prostate_centroid[1]),:]
             # flipped_centre = np.fliplr(lesion_index)
             # axs[2].imshow(flipped_centre, cmap = 'gray',aspect = 0.5)
@@ -354,13 +320,13 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
            
             axs[2].imshow(mri_ds[:,:,int(depth)], cmap ='gray')
             # Add code to create the mask for the prostate and the needle
-            # prostate_mask = np.ma.array(prostate_vol[:,:,int(depth)], mask=(prostate_vol[:,:,int(depth)]==0.0))
-            # # needle_mask = np.ma.array(needle[:,:,int(depth)], mask=(needle[:,:,int(depth)]==0.0))
+            # prostate_mask = np.ma.array(prostate_vol[:,:,int(depth)], mask=(prostate_vol[:,:,int(depth)]==1.0))
+            # # # needle_mask = np.ma.array(needle[:,:,int(depth)], mask=(needle[:,:,int(depth)]==0.0))
             # axs[2].imshow(prostate_mask, cmap='coolwarm_r', alpha=0.5)
             # # axs[2].imshow(needle_mask, cmap='jet', alpha=0.5)
             axs[2].set_title(f" Depth showing axial view ")
             axs[2].axis('off')
-            plt.axis('off')
+
 
             # Take input action (ie clicked position - original position), then scale
             if num_steps == 0:
@@ -397,18 +363,14 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             taken_actions = taken_actions / 10 # normalise between (-1,1)  
             #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
             taken_actions = np.append(taken_actions, ([1]))     
-            
-            # depth = select_depth_action(prostate_vol, prostate_centroid)                                                                                    
+                                                                                            
             
             #Finding the new sagittal slice_number
-            #assuming that the first column of the grid position (x coord) is the slice index
             grid_index = data['current_pos']
-            #taking only the y value of sag_index as that is what is being plotted
+            #taking only the x value of sag_index as that is what is being plotted
             sag_index = coord_converter(grid_index,prostate_centroid)
             sag_index = sag_index[0]
             print(Fore.GREEN + f"the values in sag_index are: {sag_index}" + Fore.RESET)
-            #using obtain volume coordinates 
-            
             
             # Take step in environment 
             obs, reward, done, data = biopsy_env.step(taken_actions)
@@ -452,6 +414,7 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
         num_steps = 0 
         hit=""
         current_patient=biopsy_env.get_info()
+        print(Fore.BLUE + f"Keys {current_patient.keys()}" + Fore.RESET)
         
         plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
 
