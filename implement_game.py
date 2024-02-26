@@ -1,6 +1,7 @@
 from colorama import Fore, Back, Style
-
+import csv
 import numpy as np
+import datetime
 import SimpleITK as sitk
 from matplotlib import pyplot as plt 
 from utils.data_utils import * 
@@ -87,8 +88,6 @@ def generate_grid_old(prostate_centroid):
     return grid, grid_coords
 
 def multiple_display(mri_data):
-
-
     #CODE TO SHOW MULTIPLE SLICES AT ONCE
     # Determine the number of slices to display (e.g., 20 slices)
     num_slices_to_display = 20
@@ -121,13 +120,12 @@ def multiple_display(mri_data):
     plt.show()
 
 def select_depth_action(prostate_mask, prostate_centroid):
-
-    
     """
     Prompts the user to select a depth action and returns the z-coordinate for the selected action.
 
     Arguments:
-    :prostate_vol: The volume of the prostate, a 3D numpy array where the prostate is segmented.
+    :prostate_centroid: The centroid of the prostate volume
+    :prostate_mask: The prostate mask volume
 
     Returns:
     :z_coordinate: The z-coordinate for the apex, centroid, or base of the prostate based on the user's choice.
@@ -206,14 +204,48 @@ def coord_converter_alt(coordinates,prostate_centroid,mri_shape):
 
       return img_coords
 
-def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,):
-    """
-    Responsible for generating the graph but also taking into account the maximum number of needles required
+# Global variable to keep track of the last logged patient ID
+last_patient_id = None
 
+def log_user_input(patient_id, action_idx, img_x, img_y, img_z, x, y, z):
+    global last_patient_id
+    #Generating a unqiue filename 
+    datetime_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    file_path = f'user_input_data_{datetime_str}.csv'
+
+    # Check if the patient ID has changed
+    if patient_id != last_patient_id:
+        # Write a blank line to the CSV file
+        with open(file_path, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([])
+
+        # Update the last_patient_id
+        last_patient_id = patient_id
+
+    # Data to be written to the CSV
+    row_data = [patient_id, action_idx, img_x, img_y, img_z, x, y, z]
+
+    # Open the CSV file and append the data
+    with open(file_path, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(row_data)
+
+    print("Logged data for patient ID:", patient_id)
+
+def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,sag_index,depth,step):
     """
-    #initialising variable 
-    sag_index = 0
-    depth = 0
+    This function plots the game environment and updates the views at each iteration.
+    It takes in various parameters including the reward, total reward, observations, volumes, game status, number of steps,
+    hit status, biopsy environment, agent, data, sagittal index, and depth.
+    The function iterates until the number of steps is less than or equal to 4.
+    It obtains lesion and MRI volumes from the data and calculates the prostate centroid.
+    The function generates grid coordinates based on the prostate centroid.
+    It predicts the agent's actions and plots the sagittal and axial views of the game environment.
+    The function also displays reward metrics and allows the user to select grid positions.
+    User actions are taken to implement the strategy, and the environment is updated accordingly.
+    The function returns the updated observations, reward, data, total reward, sagittal index, and depth.
+    """
     while ((num_steps <= 4)):
             # Obtain lesion and mri vols from data 
             lesion_vol = biopsy_env.get_lesion_mask() # get individual lesion mask 
@@ -224,7 +256,8 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             tumour_vol = vols['tumour_mask']
             prostate_centroid = np.mean(np.where(prostate_vol), axis = 1)
             print(Fore.YELLOW + f" PROSTATE CENTROIDS {prostate_centroid}" + Fore.RESET)
-            print(Fore.YELLOW + f" SHAPE {np.shape(prostate_centroid)}" + Fore.RESET)
+            print (Fore.LIGHTMAGENTA_EX + f" THE CURRENT STEP IS {step}" + Fore.RESET)
+            print(Fore.LIGHTBLUE_EX + f" the current patient is {data['patient_name']} ")
             #print(f"Game rostate centroid : {prostate_centroid}")
             SLICE_NUM = int(prostate_centroid[-1])
 
@@ -247,14 +280,12 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             x_cent = int(prostate_centroid[1]/2)
             y_cent = int(prostate_centroid[0]/2)
 
-            #Plotting for the second figure (sagittal view)
-            img_dims = [1,0.5,0.5]
-            # Compute actual spatial coordinates of the voxels:
-            # x_axis = np.arange(img_dims[0]) * vox_dims[0]
-            # y_axis = np.arange(img_dims[1]) * vox_dims[1]
-            # z_axis = np.arange(img_dims[2]) * vox_dims[2]
-
             # Plot of the sagittal view which updates at each iteration
+            #Finding the new sagittal slice_number
+            grid_index = data['current_pos']
+            #taking only the x value of sag_index as that is what is being plotted
+            sag_index = coord_converter(grid_index,prostate_centroid)
+            sag_index = sag_index[0]
             #attempting to flip the view 
             index = mri_vol[:,sag_index,:]
             index_ds = mri_ds[:,int(sag_index/4),:] 
@@ -305,15 +336,9 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             axs[1].text(first_x - 15,first_y-14.5, f'Total Result: {totalreward} ' ,fontsize = 12.5, color = 'yellow')
             axs[1].text((last_x*0.48), first_y-14.5, f'Previous Result: {reward} ({hit})',fontsize = 12.5, color = 'greenyellow')
             axs[1].text(first_x-15,last_y+16,f"CCL:{data['norm_ccl']} ",fontsize= 12.5,color = 'cyan')
-            #print (f"The current lesion size is : {data['lesion_size']}")
 
-            #Plotting for the prostate centroid view
-            # lesion_index= mri_vol[:,int(prostate_centroid[1]),:]
-            # flipped_centre = np.fliplr(lesion_index)
-            # axs[2].imshow(flipped_centre, cmap = 'gray',aspect = 0.5)
-            # axs[2].set_title(f"Lesion view for the prostate centroid {prostate_centroid[1]}")
-            
-            #plotting for the axial view with the depth action 
+            #plotting for the axial view 
+            #Allow user to select the depth of the prostate
             depth = select_depth_action(prostate_vol,prostate_centroid)
             depth = depth/4
             # test = (prostate_centroid[2])*0.25
@@ -364,12 +389,6 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
             taken_actions = np.append(taken_actions, ([1]))     
                                                                                             
-            
-            #Finding the new sagittal slice_number
-            grid_index = data['current_pos']
-            #taking only the x value of sag_index as that is what is being plotted
-            sag_index = coord_converter(grid_index,prostate_centroid)
-            sag_index = sag_index[0]
             print(Fore.GREEN + f"the values in sag_index are: {sag_index}" + Fore.RESET)
             
             # Take step in environment 
@@ -380,7 +399,9 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
 
             plt.close()
 
-    return obs,reward,data,totalreward
+            #Inputting all of the data in into the csv file 
+            log_user_input()
+    return obs,reward,data,totalreward,sag_index,depth
 
 def run_game(NUM_EPISODES=5, log_dir = 'game'):
     
@@ -397,8 +418,11 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
     data=biopsy_env.get_info()
     reward=0
     totalreward=0
+    #initialising variable 
+    sag_index = 0
+    depth = 0
     image_data = biopsy_env.get_img_data()
-    
+    step= biopsy_env.get_step_count()
     
     # Load agent
     policy_kwargs = dict(features_extractor_class = NewFeatureExtractor, features_extractor_kwargs=dict(multiple_frames = True, num_channels = 5))
@@ -413,10 +437,10 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
         done = False 
         num_steps = 0 
         hit=""
-        current_patient=biopsy_env.get_info()
-        print(Fore.BLUE + f"Keys {current_patient.keys()}" + Fore.RESET)
+        print(Fore.BLUE + f"Keys {data.keys()}" + Fore.RESET)
         
-        plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
+        
+        plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,sag_index,depth,step)
 
 if __name__ == '__main__':
     

@@ -6,6 +6,11 @@ from utils.environment_utils import *
 from Envs.biopsy_env import *
 from stable_baselines3 import PPO
 from stable_baselines3.ppo.policies import CnnPolicy
+import csv
+
+def generate_csv():
+    """ 
+    Generates a csv file which stores patient id """
 
 def slice_select(slice_num):
     """
@@ -331,23 +336,7 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
         hit=""
         current_patient=biopsy_env.get_info()
         #checking for lesion size of the next patient
-
-        print(current_patient['lesion_size'])
-        
-        if current_patient['lesion_size']<=750:
-            obs,reward,data,totalreward=plotter(3,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
-            print("Threshold a ")
-        elif current_patient['lesion_size']>=751 and current_patient['lesion_size']<=1000 :
-            obs,reward,data,totalreward=plotter(4,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
-            print("Threshold b ")
-        elif current_patient['lesion_size']>=1001 and current_patient['lesion_size']<=2000 :
-            obs,reward,data,totalreward=plotter(5,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
-            print("Threshold c ")
-        elif current_patient['lesion_size']>=2001 and current_patient['lesion_size']<=20000:
-            obs,reward,data,totalreward=plotter(6,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
-            print("Threshold d ")
-        else:
-            print("Check again for lesion size (ERROR) everything should have been accounted for ")
+        plotter(4,reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data)
 
 if __name__ == '__main__':
     
