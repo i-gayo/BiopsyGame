@@ -130,31 +130,29 @@ def select_depth_action(prostate_mask, prostate_centroid):
     Returns:
     :z_coordinate: The z-coordinate for the apex, centroid, or base of the prostate based on the user's choice.
     """
-    # Get the z-coordinates for the prostate
-    # coordinates = get_prostate_z_coordinate(prostate_mask, prostate_centroid)
-
     # Prompt the user for a depth action
-    action = int(input("Select a depth action (0: Apex, 1: Centroid, 2: Base): "))
+    while True:
+        action = int(input("Select a depth action (0: Apex, 1: Centroid, 2: Base): "))
+        if action in [0, 1, 2]:
+            break
+        else:
+            print("Invalid action selected. Please enter 1, 2, or 3.")
 
     # Return the appropriate z-coordinate
     if action == 0:
-        print ("Action 0 selected")
         depth = np.min(np.where(prostate_mask == 1)[-1])
     elif action == 1:
-        print ("Action 1 selected")
         depth = prostate_centroid[2]
         # return coordinates['centroid']
     elif action == 2:
-        print ("action 2 selected")
         depth = np.max(np.where(prostate_mask == 1)[-1])
         # return coordinates['base']
     else:
         raise ValueError("Invalid action selected.")
     print (Fore.MAGENTA + f"DEPTH SELECTED {depth}" + Fore.RESET)
-    return depth
+    return round(depth)
 
 def coord_converter(coordinates,prostate_centroid):
-
     """
     Converts the coordinates from the grid to the image coordinates
     
@@ -164,9 +162,6 @@ def coord_converter(coordinates,prostate_centroid):
     Returns:
     :image_coords (ndarray) : 3 x 1 array of image coordinates 
     """
-    #code can either be taken from create needle_vol
-    #or use method from _obtain_volume_coords
-
     # Convert to image coordinates 
     #Converts range from (-30,30) to image grid array
     print(Fore.RED + 'WITHIN THE FUNCTION' + Fore.RESET)
@@ -182,7 +177,7 @@ def coord_converter(coordinates,prostate_centroid):
     x_grid_pos = round(x_idx)
     y_grid_pos = round(y_idx)
 
-    print(Fore.BLUE + f"X GRID POS {x_grid_pos} Y GRID POS {y_grid_pos}" + Fore.RESET)
+    # print(Fore.BLUE + f"X GRID POS {x_grid_pos} Y GRID POS {y_grid_pos}" + Fore.RESET)
     
     return x_grid_pos, y_grid_pos
 
@@ -207,33 +202,34 @@ def coord_converter_alt(coordinates,prostate_centroid,mri_shape):
 # Global variable to keep track of the last logged patient ID
 last_patient_id = None
 
-def log_user_input(patient_id, action_idx, img_x, img_y, img_z, x, y, z):
+def log_user_input(file_path,patient_id, action_idx, img_x, img_y, img_z, x, y, z):
     global last_patient_id
-    #Generating a unqiue filename 
-    datetime_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    file_path = f'user_input_data_{datetime_str}.csv'
 
-    # Check if the patient ID has changed
-    if patient_id != last_patient_id:
-        # Write a blank line to the CSV file
-        with open(file_path, mode='a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow([])
+    # Check if the file already exists to decide on writing headers
+    file_exists = os.path.isfile(file_path)
 
-        # Update the last_patient_id
-        last_patient_id = patient_id
-
-    # Data to be written to the CSV
-    row_data = [patient_id, action_idx, img_x, img_y, img_z, x, y, z]
-
-    # Open the CSV file and append the data
+    # Open the CSV file
     with open(file_path, mode='a', newline='') as file:
         writer = csv.writer(file)
+
+        # If the file does not exist, write the column headers
+        if not file_exists:
+            writer.writerow(["patient_id", lesion_idx,"action_idx", "img_x", "img_y", "img_z", "x", "y", "z"])
+
+        # Check if the patient ID has changed (and it's not the first entry) to add a blank line
+        if patient_id != last_patient_id and last_patient_id is not None:
+            writer.writerow([])  # Insert a blank line for a new patient
+        
+        # Update the last_patient_id with the current patient_id
+        last_patient_id = patient_id
+
+        # Data to be written to the CSV
+        row_data = [patient_id, action_idx, img_x, img_y, img_z, x, y, z]
         writer.writerow(row_data)
 
     print("Logged data for patient ID:", patient_id)
 
-def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,sag_index,depth,step):
+def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,sag_index,depth,file_path):
     """
     This function plots the game environment and updates the views at each iteration.
     It takes in various parameters including the reward, total reward, observations, volumes, game status, number of steps,
@@ -255,10 +251,7 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             prostate_vol = vols['prostate_mask']
             tumour_vol = vols['tumour_mask']
             prostate_centroid = np.mean(np.where(prostate_vol), axis = 1)
-            print(Fore.YELLOW + f" PROSTATE CENTROIDS {prostate_centroid}" + Fore.RESET)
-            print (Fore.LIGHTMAGENTA_EX + f" THE CURRENT STEP IS {step}" + Fore.RESET)
-            print(Fore.LIGHTBLUE_EX + f" the current patient is {data['patient_name']} ")
-            #print(f"Game rostate centroid : {prostate_centroid}")
+            # print(Fore.YELLOW + f" PROSTATE CENTROIDS {prostate_centroid}" + Fore.RESET)
             SLICE_NUM = int(prostate_centroid[-1])
 
             # Define grid coords 
@@ -285,17 +278,17 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             grid_index = data['current_pos']
             #taking only the x value of sag_index as that is what is being plotted
             sag_index = coord_converter(grid_index,prostate_centroid)
-            sag_index = sag_index[0]
+            print (Fore.BLUE + f"THE SAG INDEX IS {sag_index}" + Fore.RESET)
+            sag_index_plt = sag_index[0]
             #attempting to flip the view 
-            index = mri_vol[:,sag_index,:]
-            index_ds = mri_ds[:,int(sag_index/4),:] 
+            index = mri_vol[:,sag_index_plt,:]
+            index_ds = mri_ds[:,int(sag_index_plt/4),:] 
             flipped_index = np.fliplr(index)
             flipped_index_ds = np.fliplr(index_ds)
             axs[0].imshow(flipped_index, cmap = 'grey',aspect = 0.5)
             # axs[0].imshow(prostate_vol[:,50,:], cmap = 'coolwarm_r', alpha = 0.5)
             # axs[0].imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
             # axs[0].imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
-            print (Fore.GREEN + f"VOLUME SHAPEEEEEE {np.shape(mri_vol)}" + Fore.RESET)
             # plt.show(multiple_display(mri_vol))
             axs[0].set_title(f"sagittal view for {sag_index}")
             axs[0].axis('off')
@@ -389,8 +382,6 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             #taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]     
             taken_actions = np.append(taken_actions, ([1]))     
                                                                                             
-            print(Fore.GREEN + f"the values in sag_index are: {sag_index}" + Fore.RESET)
-            
             # Take step in environment 
             obs, reward, done, data = biopsy_env.step(taken_actions)
 
@@ -400,13 +391,22 @@ def plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data
             plt.close()
 
             #Inputting all of the data in into the csv file 
-            log_user_input()
+            #checking for all of the data being written into the csv file
+            #CURRENT STEP WONT WORK STUCK AT 0 
+            print (Fore.LIGHTYELLOW_EX + f"num step is {num_steps}" + Fore.RESET)
+            current_patient = data['patient_name']
+            patient_id = current_patient.split('\\')[-1].split('_')[0]
+            print(Fore.LIGHTBLUE_EX + f" the current patient is {patient_id} "+ Fore.RESET)
+            log_user_input(file_path,patient_id, num_steps, sag_index[0] ,sag_index[1], depth, grid_index[0], grid_index[1], depth)
+
     return obs,reward,data,totalreward,sag_index,depth
 
 def run_game(NUM_EPISODES=5, log_dir = 'game'):
     
     data_path = '.\Data\ProstateDataset'
     csv_path = '.\Data\ProstateDataset\patient_data_multiple_lesions.csv'
+    datetime_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    file_path = f'user_input_data_{datetime_str}.csv'
     log_dir = log_dir
     os.makedirs(log_dir, exist_ok=True)
     
@@ -437,10 +437,8 @@ def run_game(NUM_EPISODES=5, log_dir = 'game'):
         done = False 
         num_steps = 0 
         hit=""
-        print(Fore.BLUE + f"Keys {data.keys()}" + Fore.RESET)
-        
-        
-        plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,sag_index,depth,step)
+
+        plotter(reward,totalreward,obs,vols,done,num_steps,hit,biopsy_env,agent,data,sag_index,depth,file_path)
 
 if __name__ == '__main__':
     
