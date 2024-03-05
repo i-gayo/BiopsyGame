@@ -129,10 +129,9 @@ def multiple_display(mri_data):
     plt.show()
 
 
-def select_depth_action_interactive(ax, prostate_mask, prostate_centroid):
-    # Display depth selection options on the plot
+def select_depth_action_interactive(ax):
     depth_options = ["0: Apex", "1: Centroid", "2: Base"]
-    x_positions = [2, 1, 0]  # Example y positions for the text
+    x_positions = [0, 1, 2]  # Preset x positions for the text
 
     for option, x in zip(depth_options, x_positions):
         ax.text(
@@ -144,30 +143,24 @@ def select_depth_action_interactive(ax, prostate_mask, prostate_centroid):
             bbox=dict(facecolor="white", alpha=0.5),
         )
 
-    # Adjust plot limits and settings
-    ax.set_xlim(-1, 2)
+    ax.set_xlim(-1, 3)
     ax.set_ylim(0, 1)
-    ax.axis("off")  # Hide the axis
+    ax.axis("off")
+    plt.draw()
 
-    plt.draw()  # Redraw the plot to show the text
-    print(
-        "Please click on the plot to select the depth: 0 (Apex), 1 (Centroid), or 2 (Base)."
-    )
+    print("Please click on the plot to select the depth.")
+    click_depth = plt.ginput(1)  # Wait for one click
+    x_click = click_depth[0][0]
 
-    # Use ginput to wait for a user click on one of the options
-    click = plt.ginput(1)
-    plt.close()
+    # Determine the depth based on the x-coordinate of the click
+    if x_click < 1:
+        action = 0  # Apex
+    elif x_click < 2:
+        action = 1  # Centroid
+    else:
+        action = 2  # Base
 
-    # Determine the selected depth based on the y-coordinate of the click
-    # y_click = click[0][1]
-    # if y_click > 1.5:
-    #     depth = np.min(np.where(prostate_mask == 1)[-1])  # Apex
-    # elif y_click > 0.5:
-    #     depth = prostate_centroid[2]  # Centroid
-    # else:
-    #     depth = np.max(np.where(prostate_mask == 1)[-1])  # Base
-
-    # return depth
+    return action
 
 
 def select_depth_action(prostate_mask, prostate_centroid):
@@ -200,6 +193,34 @@ def select_depth_action(prostate_mask, prostate_centroid):
         # return coordinates['base']
     else:
         raise ValueError("Invalid action selected.")
+    print(Fore.MAGENTA + f"DEPTH SELECTED {depth}" + Fore.RESET)
+    return round(depth)
+
+
+def convert_depth(action, prostate_mask, prostate_centroid):
+    """
+    Convert the action into a depth value based on the given prostate mask and centroid.
+
+    Parameters:
+    action (int): The action to convert into a depth value.
+    prostate_mask (numpy.ndarray): The mask representing the prostate.
+    prostate_centroid (tuple): The centroid coordinates of the prostate.
+
+    Returns:
+    int: The converted depth value.
+
+    Raises:
+    ValueError: If an invalid action is selected.
+    """
+    if action == 0:
+        depth = np.min(np.where(prostate_mask == 1)[-1])
+    elif action == 1:
+        depth = prostate_centroid[2]
+    elif action == 2:
+        depth = np.max(np.where(prostate_mask == 1)[-1])
+    else:
+        raise ValueError("Invalid action selected.")
+
     print(Fore.MAGENTA + f"DEPTH SELECTED {depth}" + Fore.RESET)
     return round(depth)
 
@@ -251,6 +272,37 @@ def coord_converter_alt(coordinates, prostate_centroid, mri_shape):
     img_coords = [x * 0.5, y * 0.5, z]
 
     return img_coords
+
+
+def depth_check(mri_ds, mask_p, mask_l, prostate_centroid, prostate_mask):
+    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+    dep1 = np.min(np.where(prostate_mask == 1)[-1])
+    dep2 = prostate_centroid[2]
+    dep3 = np.max(np.where(prostate_mask == 1)[-1])
+    # apex
+    mask_p_1 = mask_p[:, :, int(dep1 / 4)]
+    mask_l_1 = mask_l[:, :, int(dep1 / 4)]
+    axs[0].imshow(mri_ds[:, :, int(dep1 / 4)], cmap="gray")
+    axs[0].imshow(mask_p_1, cmap="coolwarm_r", alpha=0.5)
+    axs[0].imshow(mask_l_1, cmap="summer", alpha=0.6)
+    axs[0].axis("off")
+    axs[0].set_title("Apex")
+    # midgland
+    mask_p_2 = mask_p[:, :, int(dep2 / 4)]
+    mask_l_2 = mask_l[:, :, int(dep2 / 4)]
+    axs[1].imshow(mri_ds[:, :, int(dep2 / 4)], cmap="gray")
+    axs[1].imshow(mask_p_2, cmap="coolwarm_r", alpha=0.5)
+    axs[1].imshow(mask_l_2, cmap="summer", alpha=0.6)
+    axs[1].axis("off")
+    axs[1].set_title("Midgland")
+    # base
+    mask_p_3 = mask_p[:, :, int(dep3 / 4)]
+    mask_l_3 = mask_l[:, :, int(dep3 / 4)]
+    axs[2].imshow(mri_ds[:, :, int(dep3 / 4)], cmap="gray")
+    axs[2].imshow(mask_p_3, cmap="coolwarm_r", alpha=0.5)
+    axs[2].imshow(mask_l_3, cmap="summer", alpha=0.6)
+    axs[2].axis("off")
+    axs[2].set_title("Base")
 
 
 # Global variable to keep track of the last logged patient ID
@@ -317,6 +369,7 @@ def plotter(
     sag_index,
     depth,
     file_path,
+    depth_action,
 ):
     """
     This function plots the game environment and updates the views at each iteration.
@@ -349,7 +402,7 @@ def plotter(
         actions, _ = agent.predict(obs)
         # TODO : convert this to action / grid pos for agents!!!
 
-        fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+        fig, axs = plt.subplots(2, 3, figsize=(15, 5))
         mask_l = np.ma.array(
             obs[0, :, :, :].numpy(), mask=(obs[0, :, :, :].numpy() == 0.0)
         )
@@ -371,6 +424,8 @@ def plotter(
         x_cent = int(prostate_centroid[1] / 2)
         y_cent = int(prostate_centroid[0] / 2)
 
+        # MASK TESTING
+        # depth_check(mri_ds, mask_p, mask_l, prostate_centroid, prostate_vol)
         # Plot of the sagittal view which updates at each iteration
         # Finding the new sagittal slice_number
         grid_index = data["current_pos"]
@@ -384,27 +439,25 @@ def plotter(
         index_ds = mri_ds[:, int(sag_index_plt / 4), :]
         flipped_index = np.fliplr(index)
         # flipped_index_ds = np.fliplr(index_ds)
-        axs[0].imshow(flipped_index, cmap="grey", aspect=0.5)
+        axs[0, 0].imshow(flipped_index, cmap="grey", aspect=0.5)
         # axs[0].imshow(prostate_vol[:,50,:], cmap = 'coolwarm_r', alpha = 0.5)
         # axs[0].imshow(np.max(mask_p[:,:,:], axis =2),cmap='coolwarm_r', alpha=0.5)
         # axs[0].imshow(np.max(mask_l[:,:,:], axis =2),cmap='summer', alpha=0.6)
         # plt.show(multiple_display(mri_vol))
-        axs[0].set_title(f"sagittal view for {sag_index}")
-        axs[0].axis("off")
-        # axs[0].axis('off')
-        # axs[2].imshow(flipped_index_ds, cmap = 'grey',aspect = 0.25)
+        axs[0, 0].set_title(f"sagittal view for {sag_index}")
+        axs[0, 0].axis("off")
 
         # Plotting for the axial view
         # crop between y_cent-35:y_cent+30, x_cent-30:x_cent+40; but user input neext to select grid positions within [100,100]
-        axs[1].imshow(mri_ds[:, :, int(SLICE_NUM / 4)], cmap="gray")
-        axs[1].imshow(50 * needle[:, :], cmap="jet", alpha=0.5)
-        axs[1].imshow(np.max(mask_p[:, :, :], axis=2), cmap="coolwarm_r", alpha=0.5)
-        axs[1].imshow(np.max(mask_n_1[:, :, :], axis=2), cmap="Wistia", alpha=0.4)
-        axs[1].imshow(np.max(mask_n_2[:, :, :], axis=2), cmap="Wistia", alpha=0.4)
-        axs[1].imshow(50 * needle[:, :], cmap="jet", alpha=0.3)
-        axs[1].imshow(np.max(mask_l[:, :, :], axis=2), cmap="summer", alpha=0.6)
-        axs[1].imshow(np.max(mask_n[:, :, :], axis=2), cmap="Wistia", alpha=0.5)
-        axs[1].axis("off")
+        axs[0, 1].imshow(mri_ds[:, :, int(SLICE_NUM / 4)], cmap="gray")
+        axs[0, 1].imshow(50 * needle[:, :], cmap="jet", alpha=0.5)
+        axs[0, 1].imshow(np.max(mask_p[:, :, :], axis=2), cmap="coolwarm_r", alpha=0.5)
+        axs[0, 1].imshow(np.max(mask_n_1[:, :, :], axis=2), cmap="Wistia", alpha=0.4)
+        axs[0, 1].imshow(np.max(mask_n_2[:, :, :], axis=2), cmap="Wistia", alpha=0.4)
+        axs[0, 1].imshow(50 * needle[:, :], cmap="jet", alpha=0.3)
+        axs[0, 1].imshow(np.max(mask_l[:, :, :], axis=2), cmap="summer", alpha=0.6)
+        axs[0, 1].imshow(np.max(mask_n[:, :, :], axis=2), cmap="Wistia", alpha=0.5)
+        axs[0, 1].axis("off")
 
         # ADDING labels to grid positions!!!
         first_x = np.min(np.where(grid == 1)[1])
@@ -413,7 +466,7 @@ def plotter(
         last_y = np.max(np.where(grid == 1)[0])
         s = "A  a  B  b  C  c  D  d  E  e  F  f  G"  # fontsize 10.5
         # s = '-30 -25 -20 -15 -10 -5 0 5 10 15 20 25 30' #font size 8
-        axs[1].text(
+        axs[0, 1].text(
             first_x,
             first_y - 5,
             s,
@@ -424,10 +477,10 @@ def plotter(
         grid_labels = np.arange(7, 0.5, -0.5)
         # grid_labels = np.arange(-30, 35, 5)
         for idx, label in enumerate(grid_labels):
-            axs[1].text(
+            axs[0, 1].text(
                 first_x - 10, first_y + (idx * 5.15), label, fontsize=10.5, color="aqua"
             )
-            axs[1].text(
+            axs[1, 1].text(
                 last_x + 5, first_y + (idx * 5.15), label, fontsize=10.5, color="aqua"
             )
 
@@ -438,21 +491,21 @@ def plotter(
             hit = "HIT"
         else:
             hit = "MISS"
-        axs[1].text(
+        axs[0, 1].text(
             first_x - 15,
             first_y - 14.5,
             f"Total Result: {totalreward} ",
             fontsize=12.5,
             color="yellow",
         )
-        axs[1].text(
+        axs[0, 1].text(
             (last_x * 0.48),
             first_y - 14.5,
             f"Previous Result: {reward} ({hit})",
             fontsize=12.5,
             color="greenyellow",
         )
-        axs[1].text(
+        axs[0, 1].text(
             first_x - 15,
             last_y + 16,
             f"CCL:{data['norm_ccl']} ",
@@ -462,16 +515,27 @@ def plotter(
 
         # plotting for the axial view
         # Allow user to select the depth of the prostate
-        depth = select_depth_action(prostate_vol, prostate_centroid)
-        # depth = select_depth_action_interactive(axs[1],prostate_vol, prostate_centroid)
+        # depth = select_depth_action(prostate_vol, prostate_centroid)
+        # seperate the selection and the conversion of the depth
+        # convert depth first
+        # plot then select for the next step
+        depth = convert_depth(depth_action, prostate_vol, prostate_centroid)
+        axs[1, 0].remove()
+        axs[1, 2].remove()
         depth = depth / 4
 
-        axs[2].imshow(mri_ds[:, :, int(depth)], cmap="gray")
-        # Showing the masks for the prostate
-        prostate_mask_slice = mask_p[:, :, int(depth)]
-        axs[2].imshow(prostate_mask_slice, cmap="coolwarm_r", alpha=0.5)
-        axs[2].set_title(f" Depth showing axial view ")
-        axs[2].axis("off")
+        axs[0, 2].imshow(mri_ds[:, :, int(depth)], cmap="gray")
+        # Adding the additional mask layers
+        mask_p_ax = mask_p[:, :, int(depth)]
+        mask_l_ax = mask_l[:, :, int(depth)]
+        axs[0, 2].imshow(mask_p_ax, cmap="coolwarm_r", alpha=0.5)
+        axs[0, 2].imshow(mask_l_ax, cmap="summer", alpha=0.6)
+        axs[0, 2].set_title(f" Depth showing axial view ")
+        axs[0, 2].axis("off")
+
+        depth_action = select_depth_interactive(
+            axs[1, 1], prostate_vol, prostate_centroid
+        )
 
         # Take input action (ie clicked position - original position), then scale
         if num_steps == 0:
@@ -492,7 +556,7 @@ def plotter(
         y_idx = y_dict[(np.where(grid_vals == suggested_pos[1]))[0][0]]
 
         suggested_str = "Suggested GRID POSITION: [" + x_idx + "," + y_idx + "]"
-        axs[1].text(
+        axs[0, 1].text(
             first_x - 10, last_y + 10, suggested_str, fontsize=12, color="magenta"
         )
 
@@ -525,18 +589,18 @@ def plotter(
         patient_id = current_patient.split("\\")[-1].split("_")[0]
         print(data["lesion_idx"])
         print(Fore.LIGHTBLUE_EX + f" the current patient is {patient_id} " + Fore.RESET)
-        log_user_input(
-            file_path,
-            patient_id,
-            data["lesion_idx"],
-            num_steps,
-            sag_index[0],
-            sag_index[1],
-            depth,
-            grid_index[0],
-            grid_index[1],
-            depth,
-        )
+        # log_user_input(
+        #     file_path,
+        #     patient_id,
+        #     data["lesion_idx"],
+        #     num_steps,
+        #     sag_index[0],
+        #     sag_index[1],
+        #     depth,
+        #     grid_index[0],
+        #     grid_index[1],
+        #     depth,
+        # )
 
     return obs, reward, data, totalreward, sag_index, depth
 
@@ -607,7 +671,8 @@ def run_game(NUM_EPISODES=5, log_dir="game"):
     totalreward = 0
     # initialising variable
     sag_index = 0
-    depth = 0
+    depth = 1
+    depth_action = 0
     image_data = biopsy_env.get_img_data()
     step = biopsy_env.get_step_count()
 
@@ -642,6 +707,7 @@ def run_game(NUM_EPISODES=5, log_dir="game"):
             sag_index,
             depth,
             file_path,
+            depth_action,
         )
 
 
