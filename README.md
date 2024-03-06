@@ -32,24 +32,26 @@ Clone this repository
 Download Anaconda or miniconda using the following following links 
 
 Anaconda: https://docs.anaconda.com/free/anaconda/install/#installation
+
 Miniconda :https://docs.anaconda.com/free/miniconda/
 
 Once anaconda/miniconda is installed, create a conda environment with the necessary packages in requirements.txt
 
 replacing <env> with a suitable name for the environment
-"""
+'''
 conda create --name <env> --file requirements.txt
-"""
-##Activating environment 
+'''
+## Activating environment 
 To activate the environment enter the following line into terminal 
 
-"""
+'''
 activate <env>
-"""
-#Running application 
+'''
+# Running application 
 
 To run the game enter the following line into terminal 
 
-"""
+'''
 python play_game.py
-"""
+'''
+sdfsdfsdfsdfsdf
