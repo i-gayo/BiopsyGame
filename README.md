@@ -38,19 +38,19 @@ Miniconda :https://docs.anaconda.com/free/miniconda/
 Once anaconda/miniconda is installed, create a conda environment with the necessary packages in requirements.txt
 
 replacing <env> with a suitable name for the environment
-'''
+'''bash
 conda create --name <env> --file requirements.txt
 '''
 ## Activating environment 
 To activate the environment enter the following line into terminal 
 
-'''
+'''bash
 activate <env>
 '''
 # Running application 
 
 To run the game enter the following line into terminal 
 
-'''
+'''bash
 python play_game.py
 '''
