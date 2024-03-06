@@ -19,3 +19,37 @@ The user repeats the same process until all 5 biopsy needles have been fired.
 
 The user can also choose to fire grid positions suggested by trained RL agents.
 TODO: Display RL suggestions in "info bar" on game screen
+
+# Download instructions  
+
+# Setting up 
+
+## Clone repo to workspace 
+Clone this repository 
+
+## Setup conda environment 
+
+Download Anaconda or miniconda using the following following links 
+
+Anaconda: https://docs.anaconda.com/free/anaconda/install/#installation
+Miniconda :https://docs.anaconda.com/free/miniconda/
+
+Once anaconda/miniconda is installed, create a conda environment with the necessary packages in requirements.txt
+
+replacing <env> with a suitable name for the environment
+"""
+conda create --name <env> --file requirements.txt
+"""
+##Activating environment 
+To activate the environment enter the following line into terminal 
+
+"""
+activate <env>
+"""
+#Running application 
+
+To run the game enter the following line into terminal 
+
+"""
+python play_game.py
+"""
