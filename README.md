@@ -54,4 +54,3 @@ To run the game enter the following line into terminal
 '''
 python play_game.py
 '''
-sdfsdfsdfsdfsdf
