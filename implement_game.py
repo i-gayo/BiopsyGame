@@ -438,18 +438,18 @@ def plotter(
         current_patient = data["patient_name"]
         patient_id = current_patient.split("\\")[-1].split("_")[0]
         print(Fore.LIGHTBLUE_EX + f" the current patient is {patient_id} " + Fore.RESET)
-        # log_user_input(
-        #     file_path,
-        #     patient_id,
-        #     data["lesion_idx"],
-        #     num_steps,
-        #     sag_index[0],
-        #     sag_index[1],
-        #     depth,
-        #     grid_index[0],
-        #     grid_index[1],
-        #     depth,
-        # )
+        log_user_input(
+            file_path,
+            patient_id,
+            data["lesion_idx"],
+            num_steps,
+            sag_index[0],
+            sag_index[1],
+            depth,
+            grid_index[0],
+            grid_index[1],
+            depth,
+        )
 
     return obs, reward, data, totalreward, sag_index, depth
 
@@ -543,7 +543,23 @@ def intro():
     plt.show()
 
 
-def run_game(NUM_EPISODES=5, log_dir="game"):
+def episode_counter(csv_path):
+    # Read the CSV file using pandas
+    df = pd.read_csv(csv_file)
+
+    # Count the number of patients
+    num_patients = len(df)
+
+    # Calculate the total number of lesions
+    num_lesions = df["num_lesions"].sum()
+
+    # Calculate the number of episodes
+    num_episode = num_patients * num_lesions
+
+    return num_episode
+
+
+def run_game(NUM_EPISODES, log_dir="game"):
 
     data_path = ".\Data\ProstateDataset"
     csv_path = ".\Data\ProstateDataset\patient_data_multiple_lesions.csv"
@@ -563,6 +579,8 @@ def run_game(NUM_EPISODES=5, log_dir="game"):
         deform=True,
         start_centre=True,
     )
+    # NUM_EPISODES = episode_counter(csv_path)
+    # print (f"Number of episodes: {NUM_EPISODES}")
     data = biopsy_env.get_info()
     reward = 0
     totalreward = 0
