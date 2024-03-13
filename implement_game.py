@@ -10,6 +10,7 @@ from utils.environment_utils import *
 from Envs.biopsy_env import *
 from stable_baselines3 import PPO
 from stable_baselines3.ppo.policies import CnnPolicy
+from PIL import Image
 
 
 def generate_grid(prostate_centroid):
@@ -88,7 +89,7 @@ def select_depth_interactive(ax, first_y):
 
     ax.set_xlim(-1, 3)
     ax.set_ylim(0, 1)
-    ax.set_title("Select the depth of the prostate :")
+    ax.set_title(" FIRST Select the depth of the prostate :", color="white")
     ax.axis("off")
     plt.draw()
 
@@ -262,7 +263,7 @@ def plotter(
         actions, _ = agent.predict(obs)
         # TODO : convert this to action / grid pos for agents!!!
 
-        fig = plt.figure(figsize=(15, 6), facecolor="#023020")
+        fig = plt.figure(figsize=(15, 6), facecolor="#2c3e50")
         gs = gridspec.GridSpec(2, 3, height_ratios=[3, 1])
 
         # sizing first row
@@ -307,7 +308,7 @@ def plotter(
         index = mri_vol[:, sag_index_plt, :]
         flipped_index = np.fliplr(index)
         ax1.imshow(flipped_index, cmap="grey", aspect=0.5)
-        ax1.set_title(f"sagittal view for {sag_index}")
+        ax1.set_title(f"sagittal view for {sag_index}", color="white")
         ax1.axis("off")
 
         # Plotting for the axial view
@@ -322,6 +323,7 @@ def plotter(
         ax2.imshow(np.max(mask_n[:, :, :], axis=2), cmap="Wistia", alpha=0.5)
         ax2.axis("off")
 
+        # ADDING labels to grid positions!!!
         first_x = np.min(np.where(grid == 1)[1])
         first_y = np.min(np.where(grid == 1)[0])
         last_x = np.max(np.where(grid == 1)[1])
@@ -357,14 +359,14 @@ def plotter(
             hit = "MISS"
         ax2.set_title(
             f"Total Reward: {totalreward} \n Previous Reward: {reward} ({hit})",
-            color="yellow",
+            color="#FFDB58",
         )
         ax2.text(
             first_x - 15,
             last_y + 16,
             f"CCL:{data['norm_ccl']} ",
             fontsize=12.5,
-            color="cyan",
+            color="#FFDB58",
         )
 
         # plotting for the axial view
@@ -380,7 +382,7 @@ def plotter(
         ax3.imshow(mask_l_ax, cmap="summer", alpha=0.6)
 
         # addiitonal text
-        ax3.set_title(f" Depth showing axial view ")
+        ax3.set_title(f" Axial view for depth selection {depth}", color="white")
         ax3.axis("off")
 
         # Interactive plot for depth
@@ -436,27 +438,41 @@ def plotter(
         current_patient = data["patient_name"]
         patient_id = current_patient.split("\\")[-1].split("_")[0]
         print(Fore.LIGHTBLUE_EX + f" the current patient is {patient_id} " + Fore.RESET)
-        log_user_input(
-            file_path,
-            patient_id,
-            data["lesion_idx"],
-            num_steps,
-            sag_index[0],
-            sag_index[1],
-            depth,
-            grid_index[0],
-            grid_index[1],
-            depth,
-        )
+        # log_user_input(
+        #     file_path,
+        #     patient_id,
+        #     data["lesion_idx"],
+        #     num_steps,
+        #     sag_index[0],
+        #     sag_index[1],
+        #     depth,
+        #     grid_index[0],
+        #     grid_index[1],
+        #     depth,
+        # )
 
     return obs, reward, data, totalreward, sag_index, depth
 
 
 def intro():
-    fig, ax = plt.subplots(figsize=(12, 6))
+    # fig, ax = plt.subplots(figsize=(12, 6), facecolor="#2c3e50")
+    fig, ax = plt.subplot_mosaic(
+        [["left", "upper right"], ["left", "lower right"]],
+        figsize=(12, 7),
+        layout="constrained",
+        facecolor="#2c3e50",
+    )
+    # for k, ax in axd.items():
+    #     annotate_axes(ax, f'axd[{k!r}]', fontsize=14)
+    fig.suptitle(
+        "Welcome to the Prostate Biopsy Game!",
+        fontsize=16,
+        fontweight="bold",
+        color="white",
+    )
 
     # Set the title of the plot
-    ax.set_title("Welcome to the Prostate Biopsy Game!", fontsize=16, fontweight="bold")
+    # ax.set_title("Welcome to the Prostate Biopsy Game!", fontsize=16, fontweight="bold")
 
     # Add text with instructions on how to play the game
     blurb = """
@@ -492,13 +508,38 @@ def intro():
     """
 
     # Display the instructions
-    ax.text(0.01, 0.8, blurb, color="red", ha="left", va="center", fontsize=10)
-    ax.text(0.01, 0.4, instructions, ha="left", va="center", fontsize=10)
+    blurb_position = 0.75
+    ax["left"].text(
+        0.01,
+        blurb_position,
+        blurb,
+        color="#FFDB58",
+        ha="left",
+        va="center",
+        fontsize=10,
+    )
+    ax["left"].text(
+        0.01,
+        (blurb_position - 0.5),
+        instructions,
+        color="white",
+        ha="left",
+        va="center",
+        fontsize=10,
+    )
 
     # Hide the axes
-    ax.axis("off")
+    ax["left"].axis("off")
 
+    # displaying images
+    img1 = Image.open(".\Figures\planes.png")
+    img2 = Image.open(".\Figures\game_labelled.png")
+    ax["upper right"].imshow(img1)
+    ax["upper right"].axis("off")
+    ax["lower right"].imshow(img2)
+    ax["lower right"].axis("off")
     # Show the plot
+    plt.imshow
     plt.show()
 
 

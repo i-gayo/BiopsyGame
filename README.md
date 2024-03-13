@@ -54,3 +54,8 @@ To run the game enter the following line into terminal
 ```bash
 python play_game.py
 ```
+# Once you are finished playing the game 
+
+After you are done playing the game please answer the following quesionnaire 
+
+https://forms.gle/djSBxRjfsRDb2oi88
