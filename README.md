@@ -5,7 +5,7 @@ An interactive user game that simulates a prostate biopsy procedure
 <img src ='Figures/intro.png' alt= 'Game intructions'>
 When the program is run instructions will appear. Read through them to learn how to play the game and close it to continue.
 
-<img src="Figures/game_labelled.png" alt="Labelled version o fscreen" style="width: 40%;">
+<img src="Figures/game_labelled.png" alt="Labelled version o fscreen" >
 
 Examples of the game screen can be visualised here.
 
@@ -14,7 +14,7 @@ There are 3 views shown within the game from left to right is the axial view, th
 Grid points are shown in blue, whilst lesions and prostate gland masks are displayed in green and red respectively. Previously visited grid positions can also be seen, for up to two timesteps behind, and displayed as yellow box points. Additionally the total rewards for the given episode, previous reward and core cancer length can be seen 
 
 ## Game instructions
-<img src="Figures/start.png" alt="Starting game screen" style="width: 40%;">
+<img src="Figures/start.png" alt="Starting game screen" >
 <img src="Figures/other_view.png" alt = "Updated game screen">
 Users are shown images of the MR volume, prostate and lesion masks, along with a brachytherapy grid. 
 
