@@ -1,3 +1,4 @@
+from colorama import Fore, Back, Style
 import gym
 from gym import spaces
 import numpy as np
@@ -226,7 +227,6 @@ class TemplateGuidedBiopsy(gym.Env):
            print("check for the lesion size (ERROR) within init")
            print(f"Within the environment(info) the lesion size is : {self.info['lesion_size']}")
 
-          
     def step(self, action):
         
         """
@@ -236,7 +236,7 @@ class TemplateGuidedBiopsy(gym.Env):
         self.step_count += 1
 
         #if self.patient_name[0] == 'Patient479592532_study_1.nii.gz':
-        #  print(f"Step count : {self.step_count}")
+        # print (Fore.LIGHTMAGENTA_EX +f"Step count : {self.step_count}" + Fore.RESET)
 
         ### 1. Un-normalise actions : normalised between (-1,1)
         z_unnorm = action[2] + 1 #un-normalise from (-1,1) -> 0,2 where 0 is non-fired, 1 is apex, 2 is base 
@@ -263,7 +263,7 @@ class TemplateGuidedBiopsy(gym.Env):
 
         #new_grid_array = self.create_grid_array(grid_pos[0], grid_pos[1], needle_fired, self.grid_array, display_current_pos = True)
 
-        ### TODO: CHAGNE REWARD , CCL AND HR 
+        ### TODO: CHANGE REWARD , CCL AND HR 
 
         ### 4. Compute reward and CCL if needle fired and append to list of CCL_coeff
         needle_hit = False 
@@ -573,7 +573,6 @@ class TemplateGuidedBiopsy(gym.Env):
 
         return initial_obs  # reward, done, info can't be included
     
-
     def render(self, mode='human'):
         pass 
     
@@ -1323,7 +1322,6 @@ class TemplateGuidedBiopsy(gym.Env):
         
         return reward 
     
-        
     def compute_reward_metrics(self, hr, needle_fired, needle_hit, outside_prostate, done, metric = 'ccl'):
         
       """
@@ -1382,7 +1380,6 @@ class TemplateGuidedBiopsy(gym.Env):
           reward -= 0.5
           
       return reward
-
 
     def compute_needle_traj(self, x_grid, y_grid, depth, noise_added = False):  
         """
@@ -1611,7 +1608,10 @@ class TemplateGuidedBiopsy(gym.Env):
     def get_info(self):
       return self.info
        
-       
+    def get_step_count(self):
+      print(f"Step count : {self.step_count}")
+
+      return self.step_count 
     
 if __name__ == '__main__':
 
