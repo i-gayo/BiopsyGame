@@ -554,7 +554,7 @@ def episode_counter(csv_path):
     num_lesions = df["num_lesions"].sum()
 
     # Calculate the number of episodes
-    num_episode =  num_lesions
+    num_episode = num_patients * num_lesions
 
     return num_episode
 
