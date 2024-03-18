@@ -43,7 +43,7 @@ parser.add_argument(
     "--NUM_EPISODES",
     metavar="NUM_EPISODES",
     type=str,
-    default="5",
+    default=str(no_eps),
     action="store",
     help="How many times to play the game for",
 )

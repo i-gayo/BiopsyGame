@@ -601,7 +601,7 @@ def run_game(NUM_EPISODES, log_dir="game"):
     agent = PPO(CnnPolicy, env=biopsy_env, policy_kwargs=policy_kwargs)
 
     # Run game for num episodes
-    # print(f"Loading game script. Running for {NUM_EPISODES} episodes")
+    print(f"Loading game script. Running for {NUM_EPISODES} episodes")
     intro()
     for i in range(NUM_EPISODES):
         obs = biopsy_env.reset()
