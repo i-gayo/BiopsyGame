@@ -22,7 +22,7 @@ def episode_counter(csv_path):
     return num_episode
 
 
-# no_episodes = episode_counter(csv_path)
+no_episodes = episode_counter(csv_path)
 
 parser = argparse.ArgumentParser(
     prog="play", description="Script for playing a simple biopsy game"
@@ -42,7 +42,7 @@ parser.add_argument(
     "--NUM_EPISODES",
     metavar="NUM_EPISODES",
     type=str,
-    default="5",
+    default=no_episodes,
     action="store",
     help="How many times to play the game for",
 )
