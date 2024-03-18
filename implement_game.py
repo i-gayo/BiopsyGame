@@ -545,7 +545,7 @@ def intro():
 
 def episode_counter(csv_path):
     # Read the CSV file using pandas
-    df = pd.read_csv(csv_file)
+    df = pd.read_csv(csv_path)
 
     # Count the number of patients
     num_patients = len(df)
@@ -554,15 +554,17 @@ def episode_counter(csv_path):
     num_lesions = df["num_lesions"].sum()
 
     # Calculate the number of episodes
-    num_episode = num_patients * num_lesions
+    num_episode = num_lesions
 
     return num_episode
 
 
 def run_game(NUM_EPISODES, log_dir="game"):
 
-    data_path = ".\Data\ProstateDataset"
-    csv_path = ".\Data\ProstateDataset\patient_data_multiple_lesions.csv"
+    data_path = os.path.join(".", "Data", "ProstateDataset")
+    csv_path = os.path.join(
+        ".", "Data", "ProstateDataset", "patient_data_multiple_lesions.csv"
+    )
     datetime_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     file_path = f"user_input_data_{datetime_str}.csv"
     log_dir = log_dir
@@ -599,7 +601,7 @@ def run_game(NUM_EPISODES, log_dir="game"):
     agent = PPO(CnnPolicy, env=biopsy_env, policy_kwargs=policy_kwargs)
 
     # Run game for num episodes
-    # princh t(f"Loading game script. Running for {NUM_EPISODES} episodes")
+    # print(f"Loading game script. Running for {NUM_EPISODES} episodes")
     intro()
     for i in range(NUM_EPISODES):
         obs = biopsy_env.reset()
