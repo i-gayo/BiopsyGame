@@ -256,7 +256,9 @@ class TemplateGuidedBiopsy(gym.Env):
         
         # for biopsy game 
         z_depth = action[2]
-    
+        print(f"z depth : {z_depth}")
+        needle_fired = True 
+        
         ### 2. Move current template pos according to action_x, action_y -> DOUBLE CHECK THIS 
         grid_pos, same_position, moves_off_grid = self.find_new_needle_pos(action[0], action[1])
         self.current_needle_pos = grid_pos 
@@ -617,33 +619,35 @@ class TemplateGuidedBiopsy(gym.Env):
       y_grid_pos = round(y_idx)
       #print(f"ENV x and y:  {x_grid_pos} and {y_grid_pos}")
 
-      #depth_map = {0 : 1, 1 : int(0.5*self.max_depth), 2 : self.max_depth}
-      #depth = depth_map[int(current_pos[2])]
-
-      #needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, 0:depth ] = 1
+      # depth_map = {0 : 1, 1 : int(0.5*self.max_depth), 2 : self.max_depth}
+      # depth = depth_map[int(current_pos[2])]
+      # needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, 0:depth ] = 1
       
-      depth = current_pos[2]
+      depth_map_min = {0: self.min_depth - 4, 1: (int(0.5*self.max_depth) -4 ), 2 : self.max_depth - 4}
+      depth_map_max = {0:self.min_depth + 4, 1:(int(0.5*self.max_depth)+4), 2:self.max_depth + 4}
+      needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, depth_map_min[int(current_pos[2])]:depth_map_max[int(current_pos[2])]] = 1
+      # depth = current_pos[2]
       
-      # NEW ADDED : DEPTH SELECTION! apexz / base 
-      if depth == 0: # apex
-        # needle_vol : apex -> mid gland 
-        print(f"Apex depth")
-        min_depth = self.min_depth - 3
-        max_depth = self.min_depth + 3
+      # # NEW ADDED : DEPTH SELECTION! apexz / base 
+      # if depth == 0: # apex
+      #   # needle_vol : apex -> mid gland 
+      #   #print(f"Apex depth")
+      #   min_depth = self.min_depth - 3
+      #   max_depth = self.min_depth + 3
       
-      elif depth == 1:
-        # needle_vol : mid_gland 
-        print(f"Centroid depth")
-        mid_depth = int(0.5*self.max_depth)
-        min_depth = mid_depth - 3
-        max_depth = mid_depth + 3
+      # elif depth == 1:
+      #   # needle_vol : mid_gland 
+      #   #print(f"Centroid depth")
+      #   mid_depth = int(0.5*self.max_depth)
+      #   min_depth = mid_depth - 3
+      #   max_depth = mid_depth + 3
         
-      else:
-        print(f"Base depth")
-        min_depth = self.max_depth - 3
-        max_depth = self.max_depth + 3
+      # else:
+      #   #print(f"Base depth")
+      #   min_depth = self.max_depth - 3
+      #   max_depth = self.max_depth + 3
         
-      needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, min_depth:max_depth] = 1
+      # needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, min_depth:max_depth] = 1
       
       return needle_vol 
 
