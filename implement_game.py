@@ -230,6 +230,7 @@ def plotter(
     depth,
     file_path,
     depth_action,
+    current_episode,
 ):
     """
     This function plots the game environment and updates the views at each iteration.
@@ -309,7 +310,7 @@ def plotter(
         index = mri_vol[:, sag_index_plt, :]
         flipped_index = np.fliplr(index)
         ax1.imshow(flipped_index, cmap="grey", aspect=0.5)
-        ax1.set_title(f"sagittal view for {sag_index}", color="white")
+        ax1.set_title(f"sagittal view for previous needle placement", color="white")
         ax1.axis("off")
 
         # Plotting for the axial view
@@ -359,7 +360,7 @@ def plotter(
         else:
             hit = "MISS"
         ax2.set_title(
-            f"Total Reward: {totalreward} \n Previous Reward: {reward} ({hit})",
+            f"Episode counter : {current_episode+1} \n Total Reward: {totalreward} \n Previous Reward: {reward} ({hit})",
             color="#FFDB58",
         )
         ax2.text(
@@ -382,8 +383,14 @@ def plotter(
         ax3.imshow(mask_p_ax, cmap="coolwarm_r", alpha=0.5)
         ax3.imshow(mask_l_ax, cmap="summer", alpha=0.6)
 
-        # addiitonal text
-        ax3.set_title(f" Axial view for depth selection {depth}", color="white")
+        # additonal text
+        if depth_action == 0:
+            depth_str = "Apex"
+        elif depth_action == 1:
+            depth_str = "Midgland"
+        else:
+            depth_str = "Base"
+        ax3.set_title(f" Axial view for depth selection {depth_str}", color="white")
         ax3.axis("off")
 
         # Interactive plot for depth
@@ -397,17 +404,16 @@ def plotter(
 
         # Convert agent actions -> positions to choose
         suggested_pos = round_to_05((actions[0:-1] * 10) + current_pos)
-        
+
         # Change to boundary poisiotns (ie bertween -30,30 instead of -35,30)
         for idx, pos in enumerate(suggested_pos):
-            # if greater than 30, change to grid 30 
+            # if greater than 30, change to grid 30
             if pos > 30:
                 suggested_pos[idx] = 30
             # if less than -30, change to grid 30
             elif pos < -30:
-                suggested_pos[idx] = -30 
-            
-    
+                suggested_pos[idx] = -30
+
         # my_pos = round_to_05((taken_actions[0:-1]*10) + current_pos)
 
         # Convert predicted actions to grid pos (A, E)
@@ -638,6 +644,7 @@ def run_game(NUM_EPISODES, log_dir="game"):
             depth,
             file_path,
             depth_action,
+            i,
         )
 
 
