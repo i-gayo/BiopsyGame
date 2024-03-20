@@ -532,8 +532,9 @@ def intro():
     ax["left"].axis("off")
 
     # displaying images
-    img1 = Image.open(".\Figures\planes.png")
-    img2 = Image.open(".\Figures\game_labelled.png")
+    img_folder = os.path.join(".", "Figures")
+    img1 = Image.open(os.path.join(img_folder, "planes.png"))
+    img2 = Image.open(os.path.join(img_folder, "game_labelled.png"))
     ax["upper right"].imshow(img1)
     ax["upper right"].axis("off")
     ax["lower right"].imshow(img2)
