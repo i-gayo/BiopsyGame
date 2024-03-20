@@ -477,7 +477,7 @@ def plotter(
 def intro():
     # fig, ax = plt.subplots(figsize=(12, 6), facecolor="#2c3e50")
     fig, ax = plt.subplot_mosaic(
-        [["left", "upper right"], ["left", "lower right"]],
+        [["left", "right"], ["left", "right"]],
         figsize=(12, 7),
         layout="constrained",
         facecolor="#2c3e50",
@@ -528,39 +528,32 @@ def intro():
     """
 
     # Display the instructions
-    blurb_position = 0.75
     ax["left"].text(
-        0.01,
-        blurb_position,
-        blurb,
-        color="#FFDB58",
-        ha="left",
-        va="center",
-        fontsize=10,
+        0.01, 0.75, blurb, color="#FFDB58", ha="left", va="center", fontsize=10
     )
     ax["left"].text(
-        0.01,
-        (blurb_position - 0.5),
-        instructions,
-        color="white",
-        ha="left",
-        va="center",
-        fontsize=10,
+        0.01, 0.25, instructions, color="white", ha="left", va="center", fontsize=10
     )
-
-    # Hide the axes
     ax["left"].axis("off")
 
-    # displaying images
     img_folder = os.path.join(".", "Figures")
     img1 = Image.open(os.path.join(img_folder, "planes.png"))
-    img2 = Image.open(os.path.join(img_folder, "game_labelled.png"))
-    ax["upper right"].imshow(img1)
-    ax["upper right"].axis("off")
-    ax["lower right"].imshow(img2)
-    ax["lower right"].axis("off")
-    # Show the plot
-    plt.imshow
+    ax["right"].imshow(img1)
+    ax["right"].axis("off")
+
+    # Show the first plot and wait for it to close
+    plt.show()
+
+    # Once the first plot window is closed, show the second plot
+    plt.figure(figsize=(12, 7), layout="constrained", facecolor="#2c3e50")
+    img2 = Image.open(os.path.join(".", "Figures", "game_labelled.png"))
+    plt.title(
+        "The following image is what will appear in the game once this window is closed",
+        fontsize=14,
+        color="white",
+    )
+    plt.imshow(img2)
+    plt.axis("off")
     plt.show()
 
 
@@ -624,6 +617,7 @@ def run_game(NUM_EPISODES, log_dir="game"):
     # Run game for num episodes
     print(f"Loading game script. Running for {NUM_EPISODES} episodes")
     intro()
+
     for i in range(NUM_EPISODES):
         obs = biopsy_env.reset()
         vols = biopsy_env.get_img_data()
