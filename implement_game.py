@@ -169,7 +169,7 @@ last_patient_id = None
 last_lesion_idx = None
 
 
-# debug this later
+# debug this
 def log_user_input(
     file_path, patient_id, lesion_idx, action_idx, img_x, img_y, img_z, x, y, z
 ):
@@ -649,7 +649,7 @@ if __name__ == "__main__":
     os.makedirs(log_dir, exist_ok=True)
 
     # DATASETS
-    PS_dataset = Image_dataloader(ps_path, csv_path, use_all=True, mode="test")
+    PS_dataset = Image_dataloader(ps_path, csv_path, use_all=True, mode="train")
     Data_sampler = DataSampler(PS_dataset)
 
     # HYPERPARAMETERS
