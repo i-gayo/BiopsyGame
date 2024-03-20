@@ -438,8 +438,10 @@ def plotter(
 
         taken_actions = taken_actions / 10  # normalise between (-1,1)
         # taken_actions[0], taken_actions[1] = taken_actions[1], taken_actions[0]
-        taken_actions = np.append(taken_actions, ([1]))
+        #taken_actions = np.append(taken_actions, ([1]))
 
+        taken_actions = np.append(taken_actions, [depth_action])
+        
         # Take step in environment
         obs, reward, done, data = biopsy_env.step(taken_actions)
 
