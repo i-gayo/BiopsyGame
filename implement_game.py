@@ -169,6 +169,7 @@ last_patient_id = None
 last_lesion_idx = None
 
 
+# debug this later
 def log_user_input(
     file_path, patient_id, lesion_idx, action_idx, img_x, img_y, img_z, x, y, z
 ):
@@ -396,6 +397,17 @@ def plotter(
 
         # Convert agent actions -> positions to choose
         suggested_pos = round_to_05((actions[0:-1] * 10) + current_pos)
+        
+        # Change to boundary poisiotns (ie bertween -30,30 instead of -35,30)
+        for idx, pos in enumerate(suggested_pos):
+            # if greater than 30, change to grid 30 
+            if pos > 30:
+                suggested_pos[idx] = 30
+            # if less than -30, change to grid 30
+            elif pos < -30:
+                suggested_pos[idx] = -30 
+            
+    
         # my_pos = round_to_05((taken_actions[0:-1]*10) + current_pos)
 
         # Convert predicted actions to grid pos (A, E)
@@ -572,7 +584,7 @@ def run_game(NUM_EPISODES, log_dir="game"):
     os.makedirs(log_dir, exist_ok=True)
 
     # Load biopsy envs and datasets
-    PS_dataset = Image_dataloader(data_path, csv_path, use_all=True, mode="test")
+    PS_dataset = Image_dataloader(data_path, csv_path, use_all=True, mode="train")
     Data_sampler = DataSampler(PS_dataset)
     biopsy_env = TemplateGuidedBiopsy(
         Data_sampler,
