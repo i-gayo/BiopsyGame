@@ -239,16 +239,23 @@ class TemplateGuidedBiopsy(gym.Env):
         # print (Fore.LIGHTMAGENTA_EX +f"Step count : {self.step_count}" + Fore.RESET)
 
         ### 1. Un-normalise actions : normalised between (-1,1)
-        z_unnorm = action[2] + 1 #un-normalise from (-1,1) -> 0,2 where 0 is non-fired, 1 is apex, 2 is base 
-        if z_unnorm <= -0.33: 
-          needle_fired = False
-          z_depth = 0 
-        elif ((z_unnorm > -0.33) and (z_unnorm <= 0.33)): # apex
-          needle_fired = True 
-          z_depth = 1
-        else: # base 
-          needle_fired = True 
-          z_depth = 2 
+        
+        # TODO: change to needle depth 0,1,2 where 0 is apex, 1 is centroid, 2 is base 
+        
+        # Comment out z normalisation for games
+        # z_unnorm = action[2] + 1 #un-normalise from (-1,1) -> 0,2 where 0 is non-fired, 1 is apex, 2 is base 
+        # if z_unnorm <= -0.33: 
+        #   needle_fired = False
+        #   z_depth = 0 
+        # elif ((z_unnorm > -0.33) and (z_unnorm <= 0.33)): # apex
+        #   needle_fired = True 
+        #   z_depth = 1
+        # else: # base 
+        #   needle_fired = True 
+        #   z_depth = 2 
+        
+        # for biopsy game 
+        z_depth = action[2]
     
         ### 2. Move current template pos according to action_x, action_y -> DOUBLE CHECK THIS 
         grid_pos, same_position, moves_off_grid = self.find_new_needle_pos(action[0], action[1])
@@ -610,11 +617,34 @@ class TemplateGuidedBiopsy(gym.Env):
       y_grid_pos = round(y_idx)
       #print(f"ENV x and y:  {x_grid_pos} and {y_grid_pos}")
 
-      depth_map = {0 : 1, 1 : int(0.5*self.max_depth), 2 : self.max_depth}
-      depth = depth_map[int(current_pos[2])]
+      #depth_map = {0 : 1, 1 : int(0.5*self.max_depth), 2 : self.max_depth}
+      #depth = depth_map[int(current_pos[2])]
 
-      needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, 0:depth ] = 1
-
+      #needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, 0:depth ] = 1
+      
+      depth = current_pos[2]
+      
+      # NEW ADDED : DEPTH SELECTION! apexz / base 
+      if depth == 0: # apex
+        # needle_vol : apex -> mid gland 
+        print(f"Apex depth")
+        min_depth = self.min_depth - 3
+        max_depth = self.min_depth + 3
+      
+      elif depth == 1:
+        # needle_vol : mid_gland 
+        print(f"Centroid depth")
+        mid_depth = int(0.5*self.max_depth)
+        min_depth = mid_depth - 3
+        max_depth = mid_depth + 3
+        
+      else:
+        print(f"Base depth")
+        min_depth = self.max_depth - 3
+        max_depth = self.max_depth + 3
+        
+      needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, min_depth:max_depth] = 1
+      
       return needle_vol 
 
     def obtain_new_obs(self, current_pos):
@@ -700,7 +730,7 @@ class TemplateGuidedBiopsy(gym.Env):
         self.firing_grid = np.zeros([100,100])
 
         (mri_vol, prostate_mask, tumour_mask, tumour_mask_sitk, rectum_pos, self.patient_name) = self.DataSampler.sample_data()
-        #print(f"Patient name: {self.patient_name}")
+        print(f"Patient name: {self.patient_name}")
         #Turn from tensor to numpy array for working with environment
         mri_vol = np.squeeze(mri_vol.numpy())
         tumour_mask = np.squeeze(tumour_mask.numpy())
@@ -720,6 +750,7 @@ class TemplateGuidedBiopsy(gym.Env):
         print(f"Prostate centroid : {self.prostate_centroid}")
         self.max_needle_depth = np.max(np.where(self.img_data['prostate_mask'] == 1)[-1]) #max z depth with prostate present using whole volume 
         self.max_depth = int(self.max_needle_depth /4) # downsamples image volume so / 4 
+        self.min_depth = int((np.min(np.where(self.img_data['prostate_mask'] == 1)[-1]))/4)
         #self.max_depth = np.max(np.where(self.img_data['prostate_mask'][::2,::2,::4] == 1)[-1]) #max z depth with prostate present
 
         #Obtain image coordinates centred at the rectum 
