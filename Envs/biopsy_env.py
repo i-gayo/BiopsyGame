@@ -626,6 +626,7 @@ class TemplateGuidedBiopsy(gym.Env):
       depth_map_min = {0: self.min_depth - 4, 1: (int(0.5*self.max_depth) -4 ), 2 : self.max_depth - 4}
       depth_map_max = {0:self.min_depth + 4, 1:(int(0.5*self.max_depth)+4), 2:self.max_depth + 4}
       needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, depth_map_min[int(current_pos[2])]:depth_map_max[int(current_pos[2])]] = 1
+      
       # depth = current_pos[2]
       
       # # NEW ADDED : DEPTH SELECTION! apexz / base 
@@ -1444,9 +1445,22 @@ class TemplateGuidedBiopsy(gym.Env):
         # 16g/18g corresponds to 1.2mm, 1.6mm diameter ie 3 pixels taken up on x,y plane 
         needle_mask = np.zeros_like(self.img_data['mri_vol'])
         
-        if depth != 0:
-          scale_factor = depth_map[depth]
-          needle_mask[y_pos -1 : y_pos +2 , x_pos -1 : x_pos +2, 0:int(scale_factor *self.max_needle_depth)] = 1
+
+        #needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, depth_map_min[int(current_pos[2])]:depth_map_max[int(current_pos[2])]] = 1
+        # New changes to fix bug in depth selectino!
+        all_z_depths = (np.where(self.img_data['prostate_mask'] != 0)[-1])
+        mid_depth = int(np.mean(all_z_depths))
+        min_depth = np.percentile(all_z_depths, 15)
+        max_depth = np.percentile(all_z_depths, 85)
+        
+        depth_map_min = {0: min_depth - 10, 1: mid_depth-10, 2 : max_depth - 10}
+        depth_map_max = {0: min_depth + 11, 1: mid_depth+10, 2:max_depth + 10}
+        
+        needle_mask[y_pos -1 : y_pos +2 , x_pos -1 : x_pos +2, int(depth_map_min[int(depth)]):int(depth_map_max[int(depth)])] = 1
+      
+        # if depth != 0:
+        #   scale_factor = depth_map[depth]
+        #   needle_mask[y_pos -1 : y_pos +2 , x_pos -1 : x_pos +2, 0:int(scale_factor *self.max_needle_depth)] = 1
 
         # needle_mask = np.zeros_like(self.img_data['mri_vol'])
         # for x_grid in range(-30,35,5):
