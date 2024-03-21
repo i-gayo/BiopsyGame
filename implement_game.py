@@ -125,11 +125,13 @@ def convert_depth(action, prostate_mask, prostate_centroid):
     ValueError: If an invalid action is selected.
     """
     if action == 0:
-        depth = np.min(np.where(prostate_mask == 1)[-1])
+        #depth = np.min(np.where(prostate_mask == 1)[-1])
+        depth = np.percentile(np.where(prostate_mask == 1)[-1], 20)
     elif action == 1:
         depth = prostate_centroid[2]
     elif action == 2:
-        depth = np.max(np.where(prostate_mask == 1)[-1])
+        #depth = np.max(np.where(prostate_mask == 1)[-1])
+        depth = np.percentile(np.where(prostate_mask == 1)[-1], 80)
     else:
         raise ValueError("Invalid action selected.")
 
