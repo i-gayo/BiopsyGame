@@ -20,6 +20,7 @@ from utils.data_utils import *
 from utils.environment_utils import * 
 from PIL import Image, ImageDraw, ImageFont
 from matplotlib import pyplot as plt
+from implement_game import coord_converter, convert_depth
 
 def compute_needle_efficiency(num_needles_hit, num_needles_fired):
   """
@@ -587,9 +588,60 @@ class TemplateGuidedBiopsy(gym.Env):
     
     def close (self):
         pass 
+      
+    def obtain_slice_obs(self, actions, initialise = False):
+      """
+      Returns slice observations (6 x 3) instead of current obs being used now in data
+      """
+      
+      # TODO : slice observations based on current grid_pos (check biopsy env for this!)
+      
+      # Slice obs 
+      mri_vol = self.img_data["mri_vol"]
+      prostate_vol = self.img_data["prostate_mask"]
+      lesion_vol = self.img_data["tumour_mask"]
+      prostate_centroid = np.mean(np.where(prostate_vol), axis=1)
+
+      if initialise:
+        
+        # Initialise state at centre of grid / centre of prostate 
+        sag_mr = mri_vol[:,prostate_centroid[1],:]
+        sag_p = prostate_vol[:,prostate_centroid[1],:]
+        sag_l = lesion_vol[:,prostate_centroid[1],:]
+        
+        ax_mr = mri_vol[:,:,prostate_centroid[-1]]
+        ax_p = prostate_vol[:,:,prostate_centroid[-1]]
+        ax_l = prostate_vol[:,:,prostate_centroid[-1]]
+        
+      else:
+        # OBTAIN SAGITTAL INDEX and slices 
+        grid_index = self.current_pos
+        sag_index = coord_converter(grid_index, prostate_centroid)
+      
+        sag_mr = mri_vol[:, sag_index[0], :]
+        sag_p = prostate_vol[:,sag_index[0],:]
+        sag_l = lesion_vol[:,sag_index[0],:]
+        
+        # OBTAIN AXIAL INDEX / SLICES
+        depth_action = actions[2]
+        depth = convert_depth(depth_action, prostate_vol, prostate_centroid)
+        ax_mr = mri_vol[:,:,depth]
+        ax_p = prostate_vol[:,:,depth]
+        ax_l = lesion_vol[:,:,depth]
+        
+      # Downsample / Upsample to 96 x 96 to fit observaitons 
+      stacked_obs = []
+      for vol in [ax_mr, sag_mr, ax_p, sag_p, ax_l, sag_l]:
+        stacked_obs.append(self.resample_vol(vol))
+      stacked_obs = torch.stack(stacked_obs)
+      
+      return stacked_obs 
 
     """ Helper functions """ 
-
+    def resample_vol(self, vol, shape = (96,96)):
+        resampled_vol = torch.nn.functional.interpolate((vol).unsqueeze(0).unsqueeze(0),shape).squeeze()
+        return resampled_vol
+      
     def create_needle_vol(self, current_pos):
 
       """
