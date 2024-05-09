@@ -1,3 +1,4 @@
+from colorama import Fore, Back, Style
 import gym
 from gym import spaces
 import numpy as np
@@ -19,6 +20,7 @@ from utils.data_utils import *
 from utils.environment_utils import * 
 from PIL import Image, ImageDraw, ImageFont
 from matplotlib import pyplot as plt
+from implement_game import coord_converter, convert_depth
 
 def compute_needle_efficiency(num_needles_hit, num_needles_fired):
   """
@@ -90,7 +92,7 @@ class TemplateGuidedBiopsy(gym.Env):
 
     def __init__(self, DataSampler, obs_space = 'images', results_dir = 'test', env_num = '1', reward_fn = 'ccl', \
     miss_penalty = 2, terminating_condition = 'max_num_steps', train_mode = 'train', device = 'cpu', max_num_steps = 100, \
-      penalty = 5, deform = True, deform_scale = 0.1, deform_rate = 0.25, start_centre = False, tre = 3.0):
+      penalty = 5, deform = True, deform_scale = 0.1, deform_rate = 0.25, start_centre = True, tre = 3.0):
 
         """
         Actions : delta_x, delta_y, z (fire or no fire or variable depth)
@@ -114,10 +116,21 @@ class TemplateGuidedBiopsy(gym.Env):
         self.done = False 
         self.reward_fn = reward_fn
         self.num_needles = 0 
-        self.max_num_needles = 4 #* self.num_lesions
-        self.num_needles_per_lesion = np.zeros(self.num_lesions)
+        #defining this and then i am defining it again since i kinda dont want to fuck it up 
+
+
+
+
+
+        self.max_num_needles = 4
+
+
+
+
+        #check this part out 
+        self.num_needles_per_lesion = np.zeros(self.num_lesions) #ignore
         self.all_ccl = [] 
-        self.all_sizes = []
+        self.all_sizes = [] 
         self.max_num_steps_terminal = max_num_steps
         print(f"max num steps terminal : {self.max_num_steps_terminal}")
         self.step_count = 0 
@@ -134,7 +147,7 @@ class TemplateGuidedBiopsy(gym.Env):
         self.deform_scale = deform_scale 
         self.lesion_counter = 1 #iterator to go through each lesion and lesion idx 
         self.tre = tre 
-        
+
         # Defining deformation transformer to use
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.random_transform = GridTransform(grid_size=[8,8,4], interp_type='linear', volsize=[100,100,24], batch_size=1, device=device)
@@ -147,7 +160,6 @@ class TemplateGuidedBiopsy(gym.Env):
         self.current_needle_pos = starting_pos # x and y only; 
         self.current_pos = current_pos # x,y,z depth current poss 
         
-
         # Correlation statistics
         self.r = 0
         self.xbar = 0
@@ -190,6 +202,32 @@ class TemplateGuidedBiopsy(gym.Env):
           fp.write(str(self.patient_name[0]))
           fp.write('\n')
 
+
+
+        self.info = {'num_needles_per_lesion' : self.num_needles_per_lesion, 'all_ccl' : self.all_ccl,\
+             'all_lesion_size' : self.all_sizes, 
+             'ccl_corr' : 0, 'hit_rate' : 0, \
+               'new_patient' : False, 'ccl_corr_online' : 0 , \
+                'efficiency' : 0,'num_needles' : self.num_needles, \
+                  'max_num_needles' : self.max_num_needles, 'num_needles_hit' : 0, \
+                    'firing_grid' : self.firing_grid, 'hit_threshold_reached' : False, \
+                      'lesion_mask' : self.img_data['tumour_mask'],'current_pos' : np.array([0,0,0]),\
+                        'all_norm_ccl' : 0, 'norm_ccl' : 0, 'needle_hit' : False, 'lesion_centre' : np.array([0,0,0]),\
+                          'lesion_size' : self.tumour_statistics['lesion_size'][self.lesion_idx], 'lesion_idx' : 0, 'patient_name' : ' ', 'ccl' : 0}
+        
+        #
+        if self.info['lesion_size']<=750:  
+          self.max_num_needles = 3 #* self.num_lesions
+        elif (self.info['lesion_size']>=751) and (self.info['lesion_size']<=1000):
+           self.max_num_needles = 4
+        elif (self.info['lesion_size']>=1001) and (self.info['lesion_size']<=2000):
+          self.max_num_needles = 5
+        elif (self.info['lesion_size']>=2001) and (self.info['lesion_size']<=20000):
+           self.max_num_needles = 6
+        else:
+           print("check for the lesion size (ERROR) within init")
+           print(f"Within the environment(info) the lesion size is : {self.info['lesion_size']}")
+
     def step(self, action):
         
         """
@@ -199,20 +237,29 @@ class TemplateGuidedBiopsy(gym.Env):
         self.step_count += 1
 
         #if self.patient_name[0] == 'Patient479592532_study_1.nii.gz':
-        #  print(f"Step count : {self.step_count}")
+        # print (Fore.LIGHTMAGENTA_EX +f"Step count : {self.step_count}" + Fore.RESET)
 
         ### 1. Un-normalise actions : normalised between (-1,1)
-        z_unnorm = action[2] + 1 #un-normalise from (-1,1) -> 0,2 where 0 is non-fired, 1 is apex, 2 is base 
-        if z_unnorm <= -0.33: 
-          needle_fired = False
-          z_depth = 0 
-        elif ((z_unnorm > -0.33) and (z_unnorm <= 0.33)): # apex
-          needle_fired = True 
-          z_depth = 1
-        else: # base 
-          needle_fired = True 
-          z_depth = 2 
-    
+        
+        # TODO: change to needle depth 0,1,2 where 0 is apex, 1 is centroid, 2 is base 
+        
+        # Comment out z normalisation for games
+        # z_unnorm = action[2] + 1 #un-normalise from (-1,1) -> 0,2 where 0 is non-fired, 1 is apex, 2 is base 
+        # if z_unnorm <= -0.33: 
+        #   needle_fired = False
+        #   z_depth = 0 
+        # elif ((z_unnorm > -0.33) and (z_unnorm <= 0.33)): # apex
+        #   needle_fired = True 
+        #   z_depth = 1
+        # else: # base 
+        #   needle_fired = True 
+        #   z_depth = 2 
+        
+        # for biopsy game 
+        z_depth = action[2]
+        print(f"z depth : {z_depth}")
+        needle_fired = True 
+        
         ### 2. Move current template pos according to action_x, action_y -> DOUBLE CHECK THIS 
         grid_pos, same_position, moves_off_grid = self.find_new_needle_pos(action[0], action[1])
         self.current_needle_pos = grid_pos 
@@ -226,7 +273,7 @@ class TemplateGuidedBiopsy(gym.Env):
 
         #new_grid_array = self.create_grid_array(grid_pos[0], grid_pos[1], needle_fired, self.grid_array, display_current_pos = True)
 
-        ### TODO: CHAGNE REWARD , CCL AND HR 
+        ### TODO: CHANGE REWARD , CCL AND HR 
 
         ### 4. Compute reward and CCL if needle fired and append to list of CCL_coeff
         needle_hit = False 
@@ -509,16 +556,92 @@ class TemplateGuidedBiopsy(gym.Env):
           fp.write(str(self.patient_name[0]))
           fp.write('\n')
 
-        return initial_obs  # reward, done, info can't be included
 
+        self.info = {'num_needles_per_lesion' : self.num_needles_per_lesion, 'all_ccl' : self.all_ccl,\
+             'all_lesion_size' : self.all_sizes, 
+             'ccl_corr' : 0, 'hit_rate' : 0, \
+               'new_patient' : False, 'ccl_corr_online' : 0 , \
+                'efficiency' : 0,'num_needles' : self.num_needles, \
+                  'max_num_needles' : self.max_num_needles, 'num_needles_hit' : 0, \
+                    'firing_grid' : self.firing_grid, 'hit_threshold_reached' : False, \
+                      'lesion_mask' : self.img_data['tumour_mask'],'current_pos' : np.array([0,0,0]),\
+                        'all_norm_ccl' : 0, 'norm_ccl' : 0, 'needle_hit' : False, 'lesion_centre' : np.array([0,0,0]),\
+                          'lesion_size' : self.tumour_statistics['lesion_size'][self.lesion_idx], 'lesion_idx' : 0, 'patient_name' : ' ', 'ccl' : 0}
+        
+        #
+        if self.info['lesion_size']<=750:  
+          self.max_num_needles = 3 #* self.num_lesions
+        elif (self.info['lesion_size']>=751) and (self.info['lesion_size']<=1000):
+           self.max_num_needles = 4
+        elif (self.info['lesion_size']>=1001) and (self.info['lesion_size']<=2000):
+          self.max_num_needles = 5
+        elif (self.info['lesion_size']>=2001) and (self.info['lesion_size']<=20000):
+           self.max_num_needles = 6
+        else:
+           print("check for the lesion size (ERROR) within reset")
+           print(f"Within the environment(reset) the lesion size is : {self.info['lesion_size']}")
+
+        return initial_obs  # reward, done, info can't be included
+    
     def render(self, mode='human'):
         pass 
     
     def close (self):
         pass 
+      
+    def obtain_slice_obs(self, actions, initialise = False):
+      """
+      Returns slice observations (6 x 3) instead of current obs being used now in data
+      """
+      
+      # TODO : slice observations based on current grid_pos (check biopsy env for this!)
+      
+      # Slice obs 
+      mri_vol = self.img_data["mri_vol"]
+      prostate_vol = self.img_data["prostate_mask"]
+      lesion_vol = self.img_data["tumour_mask"]
+      prostate_centroid = np.mean(np.where(prostate_vol), axis=1)
+
+      if initialise:
+        
+        # Initialise state at centre of grid / centre of prostate 
+        sag_mr = mri_vol[:,prostate_centroid[1],:]
+        sag_p = prostate_vol[:,prostate_centroid[1],:]
+        sag_l = lesion_vol[:,prostate_centroid[1],:]
+        
+        ax_mr = mri_vol[:,:,prostate_centroid[-1]]
+        ax_p = prostate_vol[:,:,prostate_centroid[-1]]
+        ax_l = prostate_vol[:,:,prostate_centroid[-1]]
+        
+      else:
+        # OBTAIN SAGITTAL INDEX and slices 
+        grid_index = self.current_pos
+        sag_index = coord_converter(grid_index, prostate_centroid)
+      
+        sag_mr = mri_vol[:, sag_index[0], :]
+        sag_p = prostate_vol[:,sag_index[0],:]
+        sag_l = lesion_vol[:,sag_index[0],:]
+        
+        # OBTAIN AXIAL INDEX / SLICES
+        depth_action = actions[2]
+        depth = convert_depth(depth_action, prostate_vol, prostate_centroid)
+        ax_mr = mri_vol[:,:,depth]
+        ax_p = prostate_vol[:,:,depth]
+        ax_l = lesion_vol[:,:,depth]
+        
+      # Downsample / Upsample to 96 x 96 to fit observaitons 
+      stacked_obs = []
+      for vol in [ax_mr, sag_mr, ax_p, sag_p, ax_l, sag_l]:
+        stacked_obs.append(self.resample_vol(vol))
+      stacked_obs = torch.stack(stacked_obs)
+      
+      return stacked_obs 
 
     """ Helper functions """ 
-
+    def resample_vol(self, vol, shape = (96,96)):
+        resampled_vol = torch.nn.functional.interpolate((vol).unsqueeze(0).unsqueeze(0),shape).squeeze()
+        return resampled_vol
+      
     def create_needle_vol(self, current_pos):
 
       """
@@ -548,11 +671,37 @@ class TemplateGuidedBiopsy(gym.Env):
       y_grid_pos = round(y_idx)
       #print(f"ENV x and y:  {x_grid_pos} and {y_grid_pos}")
 
-      depth_map = {0 : 1, 1 : int(0.5*self.max_depth), 2 : self.max_depth}
-      depth = depth_map[int(current_pos[2])]
-
-      needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, 0:depth ] = 1
-
+      # depth_map = {0 : 1, 1 : int(0.5*self.max_depth), 2 : self.max_depth}
+      # depth = depth_map[int(current_pos[2])]
+      # needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, 0:depth ] = 1
+      
+      depth_map_min = {0: self.min_depth - 4, 1: (int(0.5*self.max_depth) -4 ), 2 : self.max_depth - 4}
+      depth_map_max = {0:self.min_depth + 4, 1:(int(0.5*self.max_depth)+4), 2:self.max_depth + 4}
+      needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, depth_map_min[int(current_pos[2])]:depth_map_max[int(current_pos[2])]] = 1
+      
+      # depth = current_pos[2]
+      
+      # # NEW ADDED : DEPTH SELECTION! apexz / base 
+      # if depth == 0: # apex
+      #   # needle_vol : apex -> mid gland 
+      #   #print(f"Apex depth")
+      #   min_depth = self.min_depth - 3
+      #   max_depth = self.min_depth + 3
+      
+      # elif depth == 1:
+      #   # needle_vol : mid_gland 
+      #   #print(f"Centroid depth")
+      #   mid_depth = int(0.5*self.max_depth)
+      #   min_depth = mid_depth - 3
+      #   max_depth = mid_depth + 3
+        
+      # else:
+      #   #print(f"Base depth")
+      #   min_depth = self.max_depth - 3
+      #   max_depth = self.max_depth + 3
+        
+      # needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, min_depth:max_depth] = 1
+      
       return needle_vol 
 
     def obtain_new_obs(self, current_pos):
@@ -638,7 +787,7 @@ class TemplateGuidedBiopsy(gym.Env):
         self.firing_grid = np.zeros([100,100])
 
         (mri_vol, prostate_mask, tumour_mask, tumour_mask_sitk, rectum_pos, self.patient_name) = self.DataSampler.sample_data()
-        #print(f"Patient name: {self.patient_name}")
+        print(f"Patient name: {self.patient_name}")
         #Turn from tensor to numpy array for working with environment
         mri_vol = np.squeeze(mri_vol.numpy())
         tumour_mask = np.squeeze(tumour_mask.numpy())
@@ -658,6 +807,7 @@ class TemplateGuidedBiopsy(gym.Env):
         print(f"Prostate centroid : {self.prostate_centroid}")
         self.max_needle_depth = np.max(np.where(self.img_data['prostate_mask'] == 1)[-1]) #max z depth with prostate present using whole volume 
         self.max_depth = int(self.max_needle_depth /4) # downsamples image volume so / 4 
+        self.min_depth = int((np.min(np.where(self.img_data['prostate_mask'] == 1)[-1]))/4)
         #self.max_depth = np.max(np.where(self.img_data['prostate_mask'][::2,::2,::4] == 1)[-1]) #max z depth with prostate present
 
         #Obtain image coordinates centred at the rectum 
@@ -1260,7 +1410,6 @@ class TemplateGuidedBiopsy(gym.Env):
         
         return reward 
     
-        
     def compute_reward_metrics(self, hr, needle_fired, needle_hit, outside_prostate, done, metric = 'ccl'):
         
       """
@@ -1320,7 +1469,6 @@ class TemplateGuidedBiopsy(gym.Env):
           
       return reward
 
-
     def compute_needle_traj(self, x_grid, y_grid, depth, noise_added = False):  
         """
 
@@ -1349,9 +1497,22 @@ class TemplateGuidedBiopsy(gym.Env):
         # 16g/18g corresponds to 1.2mm, 1.6mm diameter ie 3 pixels taken up on x,y plane 
         needle_mask = np.zeros_like(self.img_data['mri_vol'])
         
-        if depth != 0:
-          scale_factor = depth_map[depth]
-          needle_mask[y_pos -1 : y_pos +2 , x_pos -1 : x_pos +2, 0:int(scale_factor *self.max_needle_depth)] = 1
+
+        #needle_vol[y_grid_pos-1:y_grid_pos+ 2, x_grid_pos-1:x_grid_pos+2, depth_map_min[int(current_pos[2])]:depth_map_max[int(current_pos[2])]] = 1
+        # New changes to fix bug in depth selectino!
+        all_z_depths = (np.where(self.img_data['prostate_mask'] != 0)[-1])
+        mid_depth = int(np.mean(all_z_depths))
+        min_depth = np.percentile(all_z_depths, 15)
+        max_depth = np.percentile(all_z_depths, 85)
+        
+        depth_map_min = {0: min_depth - 10, 1: mid_depth-10, 2 : max_depth - 10}
+        depth_map_max = {0: min_depth + 11, 1: mid_depth+10, 2:max_depth + 10}
+        
+        needle_mask[y_pos -1 : y_pos +2 , x_pos -1 : x_pos +2, int(depth_map_min[int(depth)]):int(depth_map_max[int(depth)])] = 1
+      
+        # if depth != 0:
+        #   scale_factor = depth_map[depth]
+        #   needle_mask[y_pos -1 : y_pos +2 , x_pos -1 : x_pos +2, 0:int(scale_factor *self.max_needle_depth)] = 1
 
         # needle_mask = np.zeros_like(self.img_data['mri_vol'])
         # for x_grid in range(-30,35,5):
@@ -1544,6 +1705,14 @@ class TemplateGuidedBiopsy(gym.Env):
     
     def get_current_pos(self):
         return self.current_needle_pos
+    
+    def get_info(self):
+      return self.info
+       
+    def get_step_count(self):
+      print(f"Step count : {self.step_count}")
+
+      return self.step_count 
     
 if __name__ == '__main__':
 
